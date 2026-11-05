@@ -95,45 +95,73 @@ credentials were verified from the command line (`psql` and the API readiness ch
 ## Deferred functionality (out of scope for Phase 1)
 
 - **Commerce:** product CRUD and variants, inventory logic, category and collection CRUD.
-- **Accounts:** customer registration and login, admin authentication.
+- **Accounts:** delivered in Phase 2 (see below). Email change is still deferred.
 - **Shopping:** cart, checkout, orders, payments, shipping calculations, reviews and wishlists.
 - **Content and media:** the homepage block editor, media upload endpoints, presigned URLs and
   image processing.
 - **Dashboard and deployment:** real dashboard statistics, and production deployment (Dockerfiles,
   CI/CD, hosting).
 
-## Phase 2 prerequisites and next steps
+## Phase 2: Identity (complete)
 
-1. **Identity and admin authentication.**
-   - Add ASP.NET Core Identity with HttpOnly, Secure, SameSite cookie authentication.
-   - Add antiforgery/CSRF protection, wired through `api-client`'s `prepareHeaders`.
-   - Protect the admin with a route guard, then remove the "development only" restriction.
-2. **Database conventions.** Decide on table naming before the first migration (for example
-   snake_case through `EFCore.NamingConventions`). Then add the first migration under
-   `Persistence/Migrations`.
-3. **First catalogue module.** Domain entities, Application services and `/api/v1` endpoints,
-   then regenerate `shared-types`.
-4. **Frontend forms.** Add React Hook Form (with the Zod resolver) for the first admin forms.
-5. **Production configuration.**
-   - Set `AllowedHosts`, `Cors__AllowedOrigins__*`, the connection string and storage credentials
-     via environment variables or a secret store.
+Custom identity on `PasswordHasher<User>`. The schema is not ASP.NET Core Identity's `AspNet*`
+tables. Sessions are opaque server-side cookies. There is no JWT and no refresh endpoint.
+
+### Delivered
+
+- Snake_case identity schema and migration `InitialIdentity`, applied with `npm run api:migrate`.
+  The API does not migrate on startup.
+- Customer registration, login, logout, logout-all, profile, password change, email verification
+  and password reset. Unverified customers may sign in. Email cannot be changed.
+- Separate admin login. `GET /api/v1/admin/auth/me` requires the `admin` role. A customer session
+  receives 403.
+- CSRF header `X-CSRF-TOKEN`, kept in module memory. IP rate limits. Security-event log.
+- Mailpit in Compose, SMTP sender, idempotent role seed, and an opt-in admin bootstrap that
+  Production refuses.
+- Storefront account pages and a protected admin shell. React Hook Form and shared `Button` /
+  `TextField` primitives.
+- Identity integration tests on Testcontainers PostgreSQL. They do not use `sportswear_db`.
+
+### Accepted limits
+
+- Registration 409 reveals that an email is already registered. Reset and verification requests do not.
+- No per-account lockout beyond IP rate limits.
+- Email change is not implemented. Verification is not required for login.
+- `AllowedHosts` remains `localhost` until a deployment hostname exists.
+- Session reuse detection applies to rotated session tokens. Logout does not revoke the whole family.
+
+### Not in this phase
+
+Catalogue, inventory, cart, wishlist, orders, payments, checkout, reviews, CMS and admin product
+management. Guest checkout must stay possible later: there is no orders table, and a future order
+can store a nullable user id.
+
+## Phase 3 prerequisites
+
+1. **Catalogue.** Domain entities, Application services and `/api/v1` endpoints, then regenerate
+   `shared-types`.
+2. **Production configuration.**
+   - Set `AllowedHosts`, `Cors__AllowedOrigins__*`, the connection string, storage credentials and
+     SMTP via environment variables or a secret store.
    - Configure forwarded headers behind the TLS proxy.
-6. **Observability.** Consider OpenTelemetry for tracing and metrics once real traffic exists.
+   - Keep `Identity:BootstrapAdmin` false.
+3. **Observability.** Consider OpenTelemetry for tracing and metrics once real traffic exists.
 
 ## Architectural decisions
 
-| Decision                                                         | Rationale                                                                             |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| Modular monolith, one database                                   | Simplest architecture a single developer can operate; module boundaries kept in code. |
-| Minimal APIs, no MediatR or CQRS or repositories                 | Fewer abstractions; EF Core `DbContext` is already a unit of work.                    |
-| Shared packages ship TypeScript source                           | No build step or watch process; Vite compiles them directly.                          |
-| Types generated from OpenAPI                                     | One source of truth for contracts; no hand-written DTO duplicates.                    |
-| Cookie-ready API client, no token storage                        | Compatible with HttpOnly cookie auth; avoids tokens in `localStorage`.                |
-| Explicit-origin CORS with credentials                            | Required for cookie auth; wildcards rejected at startup.                              |
-| Options validated on start                                       | Misconfiguration fails fast with an actionable message.                               |
-| Readiness separate from liveness                                 | Orchestrators can restart crashed processes without flapping on dependency outages.   |
-| Dev secrets in `dotnet user-secrets`                             | Keeps credentials out of the repository and out of `appsettings` files.               |
-| Native API and Vite in development; Docker for dependencies only | Fastest hot reload. Dockerizing the apps later remains straightforward.               |
-| Repository `nuget.config` with source mapping                    | Reproducible restores, independent of developer-global NuGet feeds.                   |
-| Tailwind v4 CSS-first tokens                                     | No JS config; tokens are plain CSS variables that each app can override.              |
-| Native `<dialog>` for drawers                                    | Built-in focus trap, Escape and inert background without extra dependencies.          |
+| Decision                                                         | Rationale                                                                                    |
+| ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Modular monolith, one database                                   | Simplest architecture a single developer can operate; module boundaries kept in code.        |
+| Minimal APIs, no MediatR or CQRS or repositories                 | Fewer abstractions; EF Core `DbContext` is already a unit of work.                           |
+| Shared packages ship TypeScript source                           | No build step or watch process; Vite compiles them directly.                                 |
+| Types generated from OpenAPI                                     | One source of truth for contracts; no hand-written DTO duplicates.                           |
+| Cookie sessions, no JWT or token storage                         | Logout and password changes revoke server-side sessions. The browser never stores the token. |
+| Custom identity schema, `PasswordHasher<User>` only              | The required session, token and security-event tables do not match `AspNet*` Identity.       |
+| Explicit-origin CORS with credentials                            | Required for cookie auth; wildcards rejected at startup.                                     |
+| Options validated on start                                       | Misconfiguration fails fast with an actionable message.                                      |
+| Readiness separate from liveness                                 | Orchestrators can restart crashed processes without flapping on dependency outages.          |
+| Dev secrets in `dotnet user-secrets`                             | Keeps credentials out of the repository and out of `appsettings` files.                      |
+| Native API and Vite in development; Docker for dependencies only | Fastest hot reload. Dockerizing the apps later remains straightforward.                      |
+| Repository `nuget.config` with source mapping                    | Reproducible restores, independent of developer-global NuGet feeds.                          |
+| Tailwind v4 CSS-first tokens                                     | No JS config; tokens are plain CSS variables that each app can override.                     |
+| Native `<dialog>` for drawers                                    | Built-in focus trap, Escape and inert background without extra dependencies.                 |

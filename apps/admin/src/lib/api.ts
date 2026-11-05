@@ -1,4 +1,11 @@
-import { createApiClient } from '@commerce/api-client';
+import { createApiClient, createAuthApi, createCsrfMemory } from '@commerce/api-client';
 import { env } from './env';
 
-export const api = createApiClient({ baseUrl: env.VITE_API_BASE_URL });
+const csrf = createCsrfMemory();
+
+export const api = createApiClient({
+  baseUrl: env.VITE_API_BASE_URL,
+  prepareHeaders: csrf.prepareHeaders,
+});
+
+export const auth = createAuthApi(api, csrf);

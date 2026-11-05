@@ -15,11 +15,18 @@ function renderAt(path: string) {
 
 describe('storefront shell', () => {
   beforeEach(() => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify({ status: 'Healthy', checks: [] }), {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes('/api/v1/auth/me')) {
+        return new Response(JSON.stringify({ title: 'Unauthorized', status: 401 }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/problem+json' },
+        });
+      }
+      return new Response(JSON.stringify({ status: 'Healthy', checks: [] }), {
         headers: { 'Content-Type': 'application/json' },
-      }),
-    );
+      });
+    });
   });
 
   it('renders the home page inside the public layout', async () => {
@@ -29,6 +36,7 @@ describe('storefront shell', () => {
       await screen.findByRole('heading', { level: 1, name: /configurable content blocks/i }),
     ).toBeInTheDocument();
     expect(screen.getByRole('banner')).toHaveTextContent(/sportswear/i);
+    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/login');
     expect(screen.getByRole('contentinfo')).toBeInTheDocument();
   });
 

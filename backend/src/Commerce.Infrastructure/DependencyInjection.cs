@@ -1,11 +1,16 @@
 using Amazon;
 using Amazon.Runtime;
 using Amazon.S3;
+using Commerce.Application.Identity;
+using Commerce.Domain.Identity;
+using Commerce.Infrastructure.Identity;
 using Commerce.Infrastructure.Persistence;
 using Commerce.Infrastructure.Storage;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 namespace Commerce.Infrastructure;
@@ -30,7 +35,7 @@ public static class DependencyInjection
         services.AddDbContext<CommerceDbContext>((serviceProvider, options) =>
         {
             var database = serviceProvider.GetRequiredService<IOptions<DatabaseOptions>>().Value;
-            options.UseNpgsql(database.ConnectionString);
+            options.UseNpgsql(database.ConnectionString).UseSnakeCaseNamingConvention();
         });
 
         services.AddOptions<ObjectStorageOptions>()
@@ -40,6 +45,41 @@ public static class DependencyInjection
 
         services.AddSingleton<IAmazonS3>(serviceProvider =>
             CreateS3Client(serviceProvider.GetRequiredService<IOptions<ObjectStorageOptions>>().Value));
+
+        services.AddSingleton(TimeProvider.System);
+        services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
+        services.AddSingleton<Commerce.Application.Identity.IPasswordHasher, IdentityPasswordHasher>();
+        services.AddScoped<IdentityStore>();
+        services.AddScoped<IUserAccounts>(provider => provider.GetRequiredService<IdentityStore>());
+        services.AddScoped<IAuthSessions>(provider => provider.GetRequiredService<IdentityStore>());
+        services.AddScoped<IOneTimeTokens>(provider => provider.GetRequiredService<IdentityStore>());
+        services.AddScoped<ISecurityEvents>(provider => provider.GetRequiredService<IdentityStore>());
+        services.AddScoped<IEmailSender, SmtpEmailSender>();
+        services.AddScoped<IdentitySeeder>();
+        services.AddHostedService<IdentityStartupService>();
+        services.AddHostedService<SecurityEventRetentionService>();
+
+        services.AddOptions<SmtpOptions>().BindConfiguration(SmtpOptions.SectionName);
+        services.AddOptions<PublicUrlOptions>()
+            .BindConfiguration(PublicUrlOptions.SectionName)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+        services.AddOptions<AuthLimitOptions>().BindConfiguration(AuthLimitOptions.SectionName);
+        services.AddOptions<IdentitySeedOptions>()
+            .BindConfiguration(IdentitySeedOptions.SectionName)
+            .Validate<IHostEnvironment>(
+                (seed, environment) => !seed.BootstrapAdmin
+                    || (!environment.IsProduction()
+                        && !string.IsNullOrWhiteSpace(seed.AdminEmail)
+                        && !string.IsNullOrWhiteSpace(seed.AdminPassword)),
+                "Identity:BootstrapAdmin must be disabled in Production and requires Identity:AdminEmail and Identity:AdminPassword.")
+            .ValidateOnStart();
+        services.AddSingleton(serviceProvider =>
+        {
+            var auth = serviceProvider.GetRequiredService<IOptions<AuthLimitOptions>>().Value;
+            var urls = serviceProvider.GetRequiredService<IOptions<PublicUrlOptions>>().Value;
+            return new AuthPolicy(auth.SessionDays, auth.EmailVerificationHours, auth.PasswordResetHours, urls.StorefrontUrl);
+        });
 
         services.AddHealthChecks()
             .AddDbContextCheck<CommerceDbContext>("database", tags: [ReadinessTag])

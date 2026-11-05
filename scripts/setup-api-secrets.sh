@@ -31,5 +31,21 @@ set_secret "ObjectStorage:AccessKey" "${S3_ACCESS_KEY}"
 set_secret "ObjectStorage:SecretKey" "${S3_SECRET_KEY}"
 set_secret "Cors:AllowedOrigins:0" "${STOREFRONT_URL}"
 set_secret "Cors:AllowedOrigins:1" "${ADMIN_URL}"
+set_secret "PublicUrls:StorefrontUrl" "${STOREFRONT_URL}"
+set_secret "Smtp:Host" "${SMTP_HOST:-localhost}"
+set_secret "Smtp:Port" "${SMTP_PORT:-1025}"
+set_secret "Smtp:FromAddress" "${SMTP_FROM:-noreply@localhost}"
+set_secret "Identity:SeedRoles" "true"
+
+bootstrap="${BOOTSTRAP_ADMIN:-false}"
+set_secret "Identity:BootstrapAdmin" "${bootstrap}"
+if [[ "${bootstrap}" == "true" ]]; then
+  if [[ -z "${ADMIN_EMAIL:-}" || -z "${ADMIN_PASSWORD:-}" ]]; then
+    echo "BOOTSTRAP_ADMIN=true requires ADMIN_EMAIL and ADMIN_PASSWORD in .env." >&2
+    exit 1
+  fi
+  set_secret "Identity:AdminEmail" "${ADMIN_EMAIL}"
+  set_secret "Identity:AdminPassword" "${ADMIN_PASSWORD}"
+fi
 
 echo "API user secrets updated for ${project} (values not shown)."

@@ -1,9 +1,14 @@
+using Commerce.Application.Identity;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Commerce.Application;
 
 public static class DependencyInjection
 {
-    /// <summary>Registers application services (use cases). Empty until Phase 2 adds the first module.</summary>
-    public static IServiceCollection AddApplication(this IServiceCollection services) => services;
+    /// <summary>Registers application use cases. Persistence and cryptography are registered by Infrastructure.</summary>
+    public static IServiceCollection AddApplication(this IServiceCollection services)
+    {
+        services.AddScoped<IdentityService>();
+        return services;
+    }
 }

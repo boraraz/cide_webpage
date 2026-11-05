@@ -65,6 +65,20 @@ services:
       - ./infrastructure/docker/object-storage/create-bucket.sh:/scripts/create-bucket.sh:ro
     restart: 'no'
 
+  mail:
+    # Local mailbox only. The API sends SMTP here; nothing is delivered to the public internet.
+    image: axllent/mailpit:v1.27.0
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:${MAILPIT_SMTP_PORT:-1025}:1025'
+      - '127.0.0.1:${MAILPIT_UI_PORT:-8025}:8025'
+    healthcheck:
+      test: ['CMD', '/mailpit', 'readyz']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
 volumes:
   postgres-data:
   object-storage-data:

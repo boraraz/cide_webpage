@@ -19,6 +19,9 @@ csharp_style_var_when_type_is_apparent = true:suggestion
 csharp_prefer_braces = true:warning
 csharp_using_directive_placement = outside_namespace:warning
 
+[backend/src/Commerce.Infrastructure/Persistence/Migrations/**]
+generated_code = true
+
 [*.{csproj,props,targets,slnx,xml}]
 indent_size = 2
 

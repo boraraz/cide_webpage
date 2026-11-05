@@ -8,11 +8,11 @@ export interface ApiClientOptions {
   /** Absolute API origin, for example `http://localhost:5080`. */
   baseUrl: string;
   /**
-   * Defaults to `include` so future HttpOnly session cookies are sent cross-origin.
-   * The client never reads, stores or attaches tokens itself.
+   * Defaults to `include` so the HttpOnly session cookie is sent.
+   * The client never reads or stores that cookie.
    */
   credentials?: RequestCredentials;
-  /** Hook for per-request headers such as a future CSRF token. */
+  /** Attaches the in-memory CSRF token. The token itself is not stored here. */
   prepareHeaders?: (headers: Headers) => void | Promise<void>;
   /** Injectable for tests. */
   fetch?: typeof fetch;

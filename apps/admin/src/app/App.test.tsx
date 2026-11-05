@@ -14,20 +14,49 @@ function renderAt(path: string) {
   );
 }
 
+const administrator = {
+  id: '018f0000-0000-7000-8000-000000000002',
+  email: 'admin@example.com',
+  firstName: 'Admin',
+  lastName: 'User',
+  phoneNumber: null,
+  emailVerified: true,
+  roles: ['admin'],
+};
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+function problem(status: number, title: string) {
+  return new Response(JSON.stringify({ title, status }), {
+    status,
+    headers: { 'Content-Type': 'application/problem+json' },
+  });
+}
+
 describe('admin shell', () => {
   beforeEach(() => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          status: 'Unhealthy',
-          checks: [
-            { name: 'database', status: 'Healthy' },
-            { name: 'object-storage', status: 'Unhealthy' },
-          ],
-        }),
-        { status: 503, headers: { 'Content-Type': 'application/json' } },
-      ),
-    );
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes('/api/v1/admin/auth/me')) return json(administrator);
+      if (url.includes('/api/v1/health/ready')) {
+        return json(
+          {
+            status: 'Unhealthy',
+            checks: [
+              { name: 'database', status: 'Healthy' },
+              { name: 'object-storage', status: 'Unhealthy' },
+            ],
+          },
+          503,
+        );
+      }
+      return problem(404, 'Not found');
+    });
   });
 
   it('renders the dashboard with the development-only warning', async () => {

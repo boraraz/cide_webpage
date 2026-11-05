@@ -5,21 +5,21 @@ A premium sportswear e-commerce platform with a minimal, editorial shopping expe
 The monorepo contains a mobile-first customer **storefront**, a separate **admin** dashboard, and an
 **ASP.NET Core 10** REST API backed by **PostgreSQL** and **S3-compatible object storage**.
 
-> **Status: Phase 1 (foundation).** The application shells, API foundation and local
-> infrastructure are in place. No business features exist yet. See
+> **Status: Phase 2 (identity).** Customers can register and sign in. The admin requires an
+> administrator session. Catalogue, cart and checkout are not built yet. See
 > [docs/implementation-plan.md](docs/implementation-plan.md).
 >
-> The admin app has **no authentication** until Phase 2 and must not be deployed publicly.
+> The admin app is still a development tool and must not be deployed as a public site.
 
 ## Stack
 
-| Area           | Technology                                                                                                |
-| -------------- | --------------------------------------------------------------------------------------------------------- |
-| Frontends      | React 19, TypeScript (strict), Vite 8, Tailwind CSS v4, React Router 8, TanStack Query 5, Zod, Lucide     |
-| Shared         | npm workspaces: `@commerce/ui`, `@commerce/api-client`, `@commerce/shared-types` (generated from OpenAPI) |
-| Backend        | .NET 10, ASP.NET Core minimal APIs, EF Core with Npgsql, OpenAPI with Scalar, ProblemDetails              |
-| Infrastructure | PostgreSQL 18 and RustFS (S3-compatible) via Docker Compose on OrbStack                                   |
-| Quality        | ESLint, Prettier, Vitest with Testing Library, xUnit v3                                                   |
+| Area           | Technology                                                                                                             |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Frontends      | React 19, TypeScript (strict), Vite 8, Tailwind CSS v4, React Router 8, TanStack Query 5, React Hook Form, Zod, Lucide |
+| Shared         | npm workspaces: `@commerce/ui`, `@commerce/api-client`, `@commerce/shared-types` (generated from OpenAPI)              |
+| Backend        | .NET 10, ASP.NET Core minimal APIs, EF Core with Npgsql, OpenAPI with Scalar, ProblemDetails                           |
+| Infrastructure | PostgreSQL 18, RustFS (S3-compatible) and Mailpit via Docker Compose on OrbStack                                       |
+| Quality        | ESLint, Prettier, Vitest with Testing Library, xUnit v3                                                                |
 
 ## Quick start
 
@@ -31,8 +31,9 @@ cp .env.example .env
 cp apps/storefront/.env.example apps/storefront/.env.local
 cp apps/admin/.env.example apps/admin/.env.local
 
-npm run infra:up       # PostgreSQL + object storage (healthy, bucket created)
+npm run infra:up       # PostgreSQL, object storage and Mailpit
 npm run api:secrets    # .env -> dotnet user-secrets for the API
+npm run api:migrate    # apply EF Core migrations to the local database
 npm run api:watch      # API on http://localhost:5080   (terminal 2)
 npm run dev            # storefront :5173, admin :5174  (terminal 3)
 ```
@@ -70,5 +71,4 @@ npm run infra:down    # stop local infrastructure (data is kept)
   system and module boundaries.
 - [Development guide](docs/development.md): setup, environment variables, commands, DBeaver
   and troubleshooting.
-- [Implementation plan](docs/implementation-plan.md): Phase 1 deliverables, acceptance
-  criteria and next steps.
+- [Implementation plan](docs/implementation-plan.md): completed phases and what comes next.

@@ -35,6 +35,7 @@
     "api:watch": "dotnet watch --project backend/src/Commerce.Api",
     "api:test": "dotnet test --solution backend/Commerce.slnx",
     "api:secrets": "./scripts/setup-api-secrets.sh",
+    "api:migrate": "ASPNETCORE_ENVIRONMENT=Development dotnet tool run dotnet-ef database update --project backend/src/Commerce.Infrastructure --startup-project backend/src/Commerce.Api",
     "api:types": "npm run generate --workspace @commerce/shared-types",
     "verify": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run build && npm run api:build && npm run api:test"
   },

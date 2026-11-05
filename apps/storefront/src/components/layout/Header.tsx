@@ -2,19 +2,15 @@ import { Container, cx, Drawer } from '@commerce/ui';
 import { Menu, Search, ShoppingBag, User } from 'lucide-react';
 import { useState } from 'react';
 import { Link, NavLink } from 'react-router';
+import { useSession } from '@/features/auth/useSession';
 import { primaryNavigation } from '@/routes/navigation';
-
-/** Shell only: search, account and bag are placeholders until their phases land. */
-const plannedActions = [
-  { label: 'Search', icon: Search },
-  { label: 'Account', icon: User },
-  { label: 'Bag', icon: ShoppingBag },
-] as const;
 
 const iconButton = 'inline-flex size-11 items-center justify-center';
 
 export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const session = useSession();
+  const signedIn = Boolean(session.data);
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/95 pt-[env(safe-area-inset-top)] backdrop-blur">
@@ -60,19 +56,37 @@ export function Header() {
         </nav>
 
         <ul className="-mr-3 ml-auto flex items-center" aria-label="Store actions">
-          {plannedActions.map(({ label, icon: Icon }) => (
-            <li key={label} className={label === 'Bag' ? undefined : 'hidden sm:block'}>
-              <button
-                type="button"
-                disabled
-                title={`${label} (coming soon)`}
-                className={cx(iconButton, 'text-muted-foreground disabled:cursor-not-allowed')}
-              >
-                <Icon aria-hidden="true" className="size-5" strokeWidth={1.5} />
-                <span className="sr-only">{label} (coming soon)</span>
-              </button>
-            </li>
-          ))}
+          <li className="hidden sm:block">
+            <button
+              type="button"
+              disabled
+              title="Search (coming soon)"
+              className={cx(iconButton, 'text-muted-foreground disabled:cursor-not-allowed')}
+            >
+              <Search aria-hidden="true" className="size-5" strokeWidth={1.5} />
+              <span className="sr-only">Search (coming soon)</span>
+            </button>
+          </li>
+          <li>
+            <Link
+              to={signedIn ? '/account' : '/login'}
+              className={iconButton}
+              aria-label={signedIn ? 'Account' : 'Sign in'}
+            >
+              <User aria-hidden="true" className="size-5" strokeWidth={1.5} />
+            </Link>
+          </li>
+          <li>
+            <button
+              type="button"
+              disabled
+              title="Bag (coming soon)"
+              className={cx(iconButton, 'text-muted-foreground disabled:cursor-not-allowed')}
+            >
+              <ShoppingBag aria-hidden="true" className="size-5" strokeWidth={1.5} />
+              <span className="sr-only">Bag (coming soon)</span>
+            </button>
+          </li>
         </ul>
       </Container>
 
