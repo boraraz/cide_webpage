@@ -1,0 +1,17 @@
+{
+  "semi": true,
+  "singleQuote": true,
+  "trailingComma": "all",
+  "printWidth": 100,
+  "plugins": ["prettier-plugin-tailwindcss"],
+  "overrides": [
+    {
+      "files": ["apps/storefront/**", "packages/ui/**"],
+      "options": { "tailwindStylesheet": "./apps/storefront/src/styles/index.css" }
+    },
+    {
+      "files": "apps/admin/**",
+      "options": { "tailwindStylesheet": "./apps/admin/src/styles/index.css" }
+    }
+  ]
+}

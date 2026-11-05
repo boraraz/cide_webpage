@@ -1,0 +1,27 @@
+# Environment files (only *.example files are committed)
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# Node
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.vite/
+npm-debug.log*
+
+# .NET
+bin/
+obj/
+TestResults/
+*.user
+*.suo
+.vs/
+*.DotSettings.user
+
+# Editors and OS
+.idea/
+.DS_Store
+Thumbs.db

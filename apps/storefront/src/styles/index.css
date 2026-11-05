@@ -1,0 +1,8 @@
+@import 'tailwindcss';
+@import '@commerce/ui/styles.css';
+
+/* Storefront theme: override shared tokens here without affecting the admin. */
+@theme {
+  --font-display:
+    'Helvetica Neue', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+}

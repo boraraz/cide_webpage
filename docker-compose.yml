@@ -1,0 +1,70 @@
+# Local development infrastructure. The API and the React apps run natively for fast reloads.
+# Usage: cp .env.example .env && npm run infra:up
+# All ports are bound to 127.0.0.1, so services are reachable from this Mac only.
+
+name: sportswear-commerce
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in .env}
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    ports:
+      - '127.0.0.1:${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      # PostgreSQL 18+ images store data in a versioned subdirectory of /var/lib/postgresql.
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready --username="$${POSTGRES_USER}" --dbname="$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  object-storage:
+    # RustFS: Apache-2.0, S3-compatible and MinIO-like. MinIO stopped publishing container images.
+    image: rustfs/rustfs:1.0.4
+    restart: unless-stopped
+    environment:
+      RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY:?Set S3_ACCESS_KEY in .env}
+      RUSTFS_SECRET_KEY: ${S3_SECRET_KEY:?Set S3_SECRET_KEY in .env}
+      RUSTFS_ADDRESS: ':9000'
+      RUSTFS_CONSOLE_ENABLE: 'true'
+      RUSTFS_CONSOLE_ADDRESS: ':9001'
+      RUSTFS_REGION: ${S3_REGION:-us-east-1}
+      RUSTFS_OBS_ENVIRONMENT: development
+    ports:
+      - '127.0.0.1:${S3_API_PORT:-9000}:9000'
+      - '127.0.0.1:${S3_CONSOLE_PORT:-9001}:9001'
+    volumes:
+      - object-storage-data:/data
+    healthcheck:
+      test: ['CMD', 'curl', '--fail', '--silent', 'http://localhost:9000/health']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  object-storage-init:
+    # One-shot job: creates the media bucket if it does not exist, then exits.
+    image: amazon/aws-cli:2.39.4
+    depends_on:
+      object-storage:
+        condition: service_healthy
+    environment:
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY}
+      AWS_DEFAULT_REGION: ${S3_REGION:-us-east-1}
+      S3_BUCKET: ${S3_BUCKET:?Set S3_BUCKET in .env}
+      S3_INTERNAL_ENDPOINT: http://object-storage:9000
+    entrypoint: ['/bin/sh', '/scripts/create-bucket.sh']
+    volumes:
+      - ./infrastructure/docker/object-storage/create-bucket.sh:/scripts/create-bucket.sh:ro
+    restart: 'no'
+
+volumes:
+  postgres-data:
+  object-storage-data:

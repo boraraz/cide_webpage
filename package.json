@@ -1,0 +1,56 @@
+{
+  "name": "sportswear-commerce",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Premium sportswear e-commerce platform: storefront, admin and ASP.NET Core API in one monorepo.",
+  "engines": {
+    "node": ">=24.11.0"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently --names storefront,admin --prefix-colors cyan,magenta \"npm:dev:storefront\" \"npm:dev:admin\"",
+    "dev:storefront": "npm run dev --workspace @commerce/storefront",
+    "dev:admin": "npm run dev --workspace @commerce/admin",
+    "build": "npm run build --workspace @commerce/storefront --workspace @commerce/admin",
+    "build:storefront": "npm run build --workspace @commerce/storefront",
+    "build:admin": "npm run build --workspace @commerce/admin",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "npm run test --workspaces --if-present",
+    "test:all": "npm run test && npm run api:test",
+    "infra:up": "docker compose up --detach --wait",
+    "infra:down": "docker compose down",
+    "infra:logs": "docker compose logs --follow",
+    "infra:ps": "docker compose ps",
+    "api:restore": "dotnet restore backend/Commerce.slnx",
+    "api:build": "dotnet build backend/Commerce.slnx",
+    "api:run": "dotnet run --project backend/src/Commerce.Api",
+    "api:watch": "dotnet watch --project backend/src/Commerce.Api",
+    "api:test": "dotnet test --solution backend/Commerce.slnx",
+    "api:secrets": "./scripts/setup-api-secrets.sh",
+    "api:types": "npm run generate --workspace @commerce/shared-types",
+    "verify": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run build && npm run api:build && npm run api:test"
+  },
+  "overrides": {
+    "minimatch@^10": "^11.0.4"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "concurrently": "^10.0.6",
+    "eslint": "^10.14.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.7",
+    "globals": "^17.14.0",
+    "prettier": "^3.9.10",
+    "prettier-plugin-tailwindcss": "^0.8.1",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.72.1"
+  }
+}

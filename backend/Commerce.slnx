@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Commerce.Api/Commerce.Api.csproj" />
+    <Project Path="src/Commerce.Application/Commerce.Application.csproj" />
+    <Project Path="src/Commerce.Domain/Commerce.Domain.csproj" />
+    <Project Path="src/Commerce.Infrastructure/Commerce.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Commerce.IntegrationTests/Commerce.IntegrationTests.csproj" />
+    <Project Path="tests/Commerce.UnitTests/Commerce.UnitTests.csproj" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+  </Folder>
+</Solution>

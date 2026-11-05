@@ -1,0 +1,17 @@
+{
+  "name": "@commerce/shared-types",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "generate": "openapi-typescript \"${API_URL:-http://localhost:5080}/openapi/v1.json\" --output src/generated/api.ts"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.13.0"
+  }
+}

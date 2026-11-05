@@ -1,0 +1,8 @@
+@import 'tailwindcss';
+@import '@commerce/ui/styles.css';
+
+/* Admin theme: override shared tokens here without affecting the storefront. */
+@theme {
+  --color-surface: #fafafa;
+  --color-accent: #1f1f1f;
+}
