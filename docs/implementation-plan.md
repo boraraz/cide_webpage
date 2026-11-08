@@ -132,20 +132,62 @@ tables. Sessions are opaque server-side cookies. There is no JWT and no refresh 
 
 ### Not in this phase
 
-Catalogue, inventory, cart, wishlist, orders, payments, checkout, reviews, CMS and admin product
-management. Guest checkout must stay possible later: there is no orders table, and a future order
-can store a nullable user id.
+Cart, wishlist, orders, payments, checkout, reviews, CMS and admin product management. Guest
+checkout must stay possible later: there is no orders table, and a future order can store a
+nullable user id.
 
-## Phase 3 prerequisites
+## Phase 3: Catalog and inventory API (complete)
 
-1. **Catalogue.** Domain entities, Application services and `/api/v1` endpoints, then regenerate
-   `shared-types`.
-2. **Production configuration.**
+Catalog rules live in `Commerce.Domain/Catalog`. Use cases live in `Commerce.Application/Catalog`.
+EF Core and S3 stay in Infrastructure. Endpoints are minimal APIs under `/api/v1`. There is no
+MediatR and no generic repository. Storefront listing, product pages and admin catalog screens are
+not part of this phase. Admin catalog navigation stays disabled.
+
+### Delivered
+
+- Categories, collections, products (`Draft`, `Active`, `Archived`), per-product options and values,
+  variants, balances, movements, media metadata and slug history. Migration `Catalog` does not alter
+  identity tables. A PostgreSQL trigger rejects category cycles. The API still does not migrate on
+  startup. Upgrade the existing database with `npm run api:migrate`. Do not drop the Postgres volume.
+- Prices exist only on variants: `numeric(12,2)`, tax-inclusive TRY, JSON decimal strings. Active
+  variants must be priced above zero. Compare-at is null or strictly greater. Currency is `TRY`.
+- Color and size are option names. Public filters accept only `color` and `size`. Other axes are
+  stored and returned on the product, and are not filter parameters yet.
+- Stock adjustments lock `inventory_balances` with `SELECT … FOR UPDATE`. `reserved` stays 0.
+  `Idempotency-Key` (16–80 characters) is required. Phase 6 will add `inventory_reservations` and a
+  30-minute release worker under the same lock. No reservation endpoint ships now.
+- Private bucket. Admin upload and both public and admin downloads are proxied by the API. JPEG,
+  PNG and WebP only, 5 MiB maximum, object key `catalog/{productId}/{mediaId}.{ext}`.
+- Public reads are anonymous. Drafts, archived products and inactive categories or collections are
+  hidden. Lists include `available` and omit exact stock. Search uses a stored `tsvector` with the
+  `turkish` configuration. Sort is `newest`, `price_asc` or `price_desc`, tied by product id.
+- Admin routes require the `admin` role. Customers receive 403. Anonymous callers receive 401.
+  POST, PATCH and DELETE require `X-CSRF-TOKEN`. Media uploads are limited to 30 per hour per IP.
+- `Catalog:SeedSampleData` is false by default and true in Development. The seeder inserts missing
+  sample slugs and never updates an existing row. Sample images are metadata only until a real upload.
+- OpenAPI types and `@commerce/api-client` catalog calls. No new storefront or admin pages.
+
+### Accepted limits
+
+- No product hard delete. Archive is the lifecycle.
+- Category and collection delete returns 409 while children or assignments exist.
+- Public search ignores queries shorter than two characters.
+- Slug history resolves the current resource. It does not emit HTTP 301.
+- Sample seed media has no object bytes, so `GET /api/v1/media/{id}` is 404 until an admin upload.
+
+### Not in this phase
+
+Cart, checkout, coupons, a tax engine, reservations, payments, reviews, Redis, Elasticsearch, and
+admin or storefront catalog screens.
+
+## Later prerequisites
+
+1. **Production configuration.**
    - Set `AllowedHosts`, `Cors__AllowedOrigins__*`, the connection string, storage credentials and
      SMTP via environment variables or a secret store.
    - Configure forwarded headers behind the TLS proxy.
    - Keep `Identity:BootstrapAdmin` false.
-3. **Observability.** Consider OpenTelemetry for tracing and metrics once real traffic exists.
+2. **Observability.** Consider OpenTelemetry for tracing and metrics once real traffic exists.
 
 ## Architectural decisions
 

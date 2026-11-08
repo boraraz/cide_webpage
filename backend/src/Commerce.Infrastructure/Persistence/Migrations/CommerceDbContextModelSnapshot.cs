@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
+using NpgsqlTypes;
 
 #nullable disable
 
@@ -21,6 +22,626 @@ namespace Commerce.Infrastructure.Persistence.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("Commerce.Domain.Catalog.Category", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("description");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("display_order");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid?>("ParentCategoryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("parent_category_id");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("slug");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_categories");
+
+                    b.HasIndex("ParentCategoryId")
+                        .HasDatabaseName("ix_categories_parent_category_id");
+
+                    b.HasIndex("Slug")
+                        .IsUnique()
+                        .HasDatabaseName("ix_categories_slug");
+
+                    b.HasIndex("IsActive", "DisplayOrder")
+                        .HasDatabaseName("ix_categories_is_active_display_order");
+
+                    b.ToTable("categories", (string)null);
+                });
+
+            modelBuilder.Entity("Commerce.Domain.Catalog.Collection", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("description");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("display_order");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("slug");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_collections");
+
+                    b.HasIndex("Slug")
+                        .IsUnique()
+                        .HasDatabaseName("ix_collections_slug");
+
+                    b.HasIndex("IsActive", "DisplayOrder")
+                        .HasDatabaseName("ix_collections_is_active_display_order");
+
+                    b.ToTable("collections", (string)null);
+                });
+
+            modelBuilder.Entity("Commerce.Domain.Catalog.InventoryBalance", b =>
+                {
+                    b.Property<Guid>("VariantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("variant_id");
+
+                    b.Property<int>("OnHand")
+                        .HasColumnType("integer")
+                        .HasColumnName("on_hand");
+
+                    b.Property<int>("Reserved")
+                        .HasColumnType("integer")
+                        .HasColumnName("reserved");
+
+                    b.HasKey("VariantId")
+                        .HasName("pk_inventory_balances");
+
+                    b.ToTable("inventory_balances", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_inventory_balances_on_hand_nonnegative", "on_hand >= 0");
+
+                            t.HasCheckConstraint("ck_inventory_balances_reserved_nonnegative", "reserved >= 0");
+
+                            t.HasCheckConstraint("ck_inventory_balances_reserved_within_on_hand", "reserved <= on_hand");
+                        });
+                });
+
+            modelBuilder.Entity("Commerce.Domain.Catalog.InventoryMovement", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("ActorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_user_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("idempotency_key");
+
+                    b.Property<string>("MovementType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("movement_type");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("note");
+
+                    b.Property<int>("OnHandAfter")
+                        .HasColumnType("integer")
+                        .HasColumnName("on_hand_after");
+
+                    b.Property<int>("QuantityDelta")
+                        .HasColumnType("integer")
+                        .HasColumnName("quantity_delta");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("request_hash");
+
+                    b.Property<int>("ReservedAfter")
+                        .HasColumnType("integer")
+                        .HasColumnName("reserved_after");
+
+                    b.Property<Guid>("VariantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("variant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_inventory_movements");
+
+                    b.HasIndex("ActorUserId")
+                        .HasDatabaseName("ix_inventory_movements_actor_user_id");
+
+                    b.HasIndex("VariantId", "CreatedAt")
+                        .HasDatabaseName("ix_inventory_movements_variant_id_created_at");
+
+                    b.HasIndex("VariantId", "IdempotencyKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_inventory_movements_variant_id_idempotency_key");
+
+                    b.ToTable("inventory_movements", (string)null);
+                });
+
+            modelBuilder.Entity("Commerce.Domain.Catalog.Product", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Brand")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("brand");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(8000)
+                        .HasColumnType("character varying(8000)")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("IsFeatured")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_featured");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("name");
+
+                    b.Property<DateTimeOffset?>("PublishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("published_at");
+
+                    b.Property<NpgsqlTsVector>("SearchVector")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("tsvector")
+                        .HasColumnName("search_vector")
+                        .HasComputedColumnSql("to_tsvector('turkish', coalesce(name, '') || ' ' || coalesce(brand, '') || ' ' || coalesce(short_description, '') || ' ' || coalesce(description, ''))", true);
+
+                    b.Property<string>("ShortDescription")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("short_description");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("slug");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_products");
+
+                    b.HasIndex("SearchVector")
+                        .HasDatabaseName("ix_products_search_vector");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("SearchVector"), "GIN");
+
+                    b.HasIndex("Slug")
+                        .IsUnique()
+                        .HasDatabaseName("ix_products_slug");
+
+                    b.HasIndex("Status", "PublishedAt")
+                        .HasDatabaseName("ix_products_status_published_at");
+
+                    b.ToTable("products", (string)null);
+                });
+
+            modelBuilder.Entity("Commerce.Domain.Catalog.ProductCategory", b =>
+                {
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("product_id");
+
+                    b.Property<Guid>("CategoryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("category_id");
+
+                    b.HasKey("ProductId", "CategoryId")
+                        .HasName("pk_product_categories");
+
+                    b.HasIndex("CategoryId")
+                        .HasDatabaseName("ix_product_categories_category_id");
+
+                    b.ToTable("product_categories", (string)null);
+                });
+
+            modelBuilder.Entity("Commerce.Domain.Catalog.ProductCollection", b =>
+                {
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("product_id");
+
+                    b.Property<Guid>("CollectionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("collection_id");
+
+                    b.HasKey("ProductId", "CollectionId")
+                        .HasName("pk_product_collections");
+
+                    b.HasIndex("CollectionId")
+                        .HasDatabaseName("ix_product_collections_collection_id");
+
+                    b.ToTable("product_collections", (string)null);
+                });
+
+            modelBuilder.Entity("Commerce.Domain.Catalog.ProductMedia", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AltText")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("alt_text");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("content_type");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("display_order");
+
+                    b.Property<long>("FileSize")
+                        .HasColumnType("bigint")
+                        .HasColumnName("file_size");
+
+                    b.Property<bool>("IsPrimary")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_primary");
+
+                    b.Property<string>("ObjectKey")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("object_key");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("product_id");
+
+                    b.Property<Guid?>("VariantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("variant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_product_media");
+
+                    b.HasIndex("ObjectKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_product_media_object_key");
+
+                    b.HasIndex("ProductId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_product_media_product_id")
+                        .HasFilter("is_primary");
+
+                    b.HasIndex("VariantId")
+                        .HasDatabaseName("ix_product_media_variant_id");
+
+                    b.HasIndex("ProductId", "DisplayOrder")
+                        .HasDatabaseName("ix_product_media_product_id_display_order");
+
+                    b.ToTable("product_media", (string)null);
+                });
+
+            modelBuilder.Entity("Commerce.Domain.Catalog.ProductOption", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("normalized_name");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("integer")
+                        .HasColumnName("position");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("product_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_product_options");
+
+                    b.HasIndex("ProductId", "NormalizedName")
+                        .IsUnique()
+                        .HasDatabaseName("ix_product_options_product_id_normalized_name");
+
+                    b.ToTable("product_options", (string)null);
+                });
+
+            modelBuilder.Entity("Commerce.Domain.Catalog.ProductOptionValue", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Code")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("code");
+
+                    b.Property<string>("NormalizedValue")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("normalized_value");
+
+                    b.Property<Guid>("OptionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("option_id");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("integer")
+                        .HasColumnName("position");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("value");
+
+                    b.HasKey("Id")
+                        .HasName("pk_product_option_values");
+
+                    b.HasIndex("OptionId", "NormalizedValue")
+                        .IsUnique()
+                        .HasDatabaseName("ix_product_option_values_option_id_normalized_value");
+
+                    b.ToTable("product_option_values", (string)null);
+                });
+
+            modelBuilder.Entity("Commerce.Domain.Catalog.ProductVariant", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Barcode")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("barcode");
+
+                    b.Property<string>("CombinationKey")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("combination_key");
+
+                    b.Property<decimal?>("CompareAtPrice")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("compare_at_price");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("currency_code");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<decimal>("Price")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("price");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("product_id");
+
+                    b.Property<string>("Sku")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("sku");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_product_variants");
+
+                    b.HasIndex("Barcode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_product_variants_barcode")
+                        .HasFilter("barcode IS NOT NULL");
+
+                    b.HasIndex("Sku")
+                        .IsUnique()
+                        .HasDatabaseName("ix_product_variants_sku");
+
+                    b.HasIndex("ProductId", "CombinationKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_product_variants_product_id_combination_key");
+
+                    b.ToTable("product_variants", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_product_variants_compare_at", "compare_at_price IS NULL OR compare_at_price > price");
+
+                            t.HasCheckConstraint("ck_product_variants_currency_try", "currency_code = 'TRY'");
+
+                            t.HasCheckConstraint("ck_product_variants_price_nonnegative", "price >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("Commerce.Domain.Catalog.SlugHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_id");
+
+                    b.Property<string>("OwnerType")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("owner_type");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("slug");
+
+                    b.HasKey("Id")
+                        .HasName("pk_slug_histories");
+
+                    b.HasIndex("OwnerType", "OwnerId")
+                        .HasDatabaseName("ix_slug_histories_owner_type_owner_id");
+
+                    b.HasIndex("OwnerType", "Slug")
+                        .IsUnique()
+                        .HasDatabaseName("ix_slug_histories_owner_type_slug");
+
+                    b.ToTable("slug_histories", (string)null);
+                });
+
+            modelBuilder.Entity("Commerce.Domain.Catalog.VariantOptionValue", b =>
+                {
+                    b.Property<Guid>("VariantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("variant_id");
+
+                    b.Property<Guid>("OptionValueId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("option_value_id");
+
+                    b.HasKey("VariantId", "OptionValueId")
+                        .HasName("pk_variant_option_values");
+
+                    b.HasIndex("OptionValueId")
+                        .HasDatabaseName("ix_variant_option_values_option_value_id");
+
+                    b.ToTable("variant_option_values", (string)null);
+                });
 
             modelBuilder.Entity("Commerce.Domain.Identity.AuthSession", b =>
                 {
@@ -326,6 +947,166 @@ namespace Commerce.Infrastructure.Persistence.Migrations
                     b.ToTable("user_roles", (string)null);
                 });
 
+            modelBuilder.Entity("Commerce.Domain.Catalog.Category", b =>
+                {
+                    b.HasOne("Commerce.Domain.Catalog.Category", "Parent")
+                        .WithMany("Children")
+                        .HasForeignKey("ParentCategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_categories_categories_parent_category_id");
+
+                    b.Navigation("Parent");
+                });
+
+            modelBuilder.Entity("Commerce.Domain.Catalog.InventoryBalance", b =>
+                {
+                    b.HasOne("Commerce.Domain.Catalog.ProductVariant", "Variant")
+                        .WithOne("Balance")
+                        .HasForeignKey("Commerce.Domain.Catalog.InventoryBalance", "VariantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_inventory_balances_product_variants_variant_id");
+
+                    b.Navigation("Variant");
+                });
+
+            modelBuilder.Entity("Commerce.Domain.Catalog.InventoryMovement", b =>
+                {
+                    b.HasOne("Commerce.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("ActorUserId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_inventory_movements_users_actor_user_id");
+
+                    b.HasOne("Commerce.Domain.Catalog.ProductVariant", "Variant")
+                        .WithMany()
+                        .HasForeignKey("VariantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_inventory_movements_product_variants_variant_id");
+
+                    b.Navigation("Variant");
+                });
+
+            modelBuilder.Entity("Commerce.Domain.Catalog.ProductCategory", b =>
+                {
+                    b.HasOne("Commerce.Domain.Catalog.Category", "Category")
+                        .WithMany("ProductCategories")
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_product_categories_categories_category_id");
+
+                    b.HasOne("Commerce.Domain.Catalog.Product", "Product")
+                        .WithMany("Categories")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_product_categories_products_product_id");
+
+                    b.Navigation("Category");
+
+                    b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("Commerce.Domain.Catalog.ProductCollection", b =>
+                {
+                    b.HasOne("Commerce.Domain.Catalog.Collection", "Collection")
+                        .WithMany("ProductCollections")
+                        .HasForeignKey("CollectionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_product_collections_collections_collection_id");
+
+                    b.HasOne("Commerce.Domain.Catalog.Product", "Product")
+                        .WithMany("Collections")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_product_collections_products_product_id");
+
+                    b.Navigation("Collection");
+
+                    b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("Commerce.Domain.Catalog.ProductMedia", b =>
+                {
+                    b.HasOne("Commerce.Domain.Catalog.Product", "Product")
+                        .WithMany("Media")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_product_media_products_product_id");
+
+                    b.HasOne("Commerce.Domain.Catalog.ProductVariant", "Variant")
+                        .WithMany()
+                        .HasForeignKey("VariantId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_product_media_product_variants_variant_id");
+
+                    b.Navigation("Product");
+
+                    b.Navigation("Variant");
+                });
+
+            modelBuilder.Entity("Commerce.Domain.Catalog.ProductOption", b =>
+                {
+                    b.HasOne("Commerce.Domain.Catalog.Product", "Product")
+                        .WithMany("Options")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_product_options_products_product_id");
+
+                    b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("Commerce.Domain.Catalog.ProductOptionValue", b =>
+                {
+                    b.HasOne("Commerce.Domain.Catalog.ProductOption", "Option")
+                        .WithMany("Values")
+                        .HasForeignKey("OptionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_product_option_values_product_options_option_id");
+
+                    b.Navigation("Option");
+                });
+
+            modelBuilder.Entity("Commerce.Domain.Catalog.ProductVariant", b =>
+                {
+                    b.HasOne("Commerce.Domain.Catalog.Product", "Product")
+                        .WithMany("Variants")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_product_variants_products_product_id");
+
+                    b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("Commerce.Domain.Catalog.VariantOptionValue", b =>
+                {
+                    b.HasOne("Commerce.Domain.Catalog.ProductOptionValue", "OptionValue")
+                        .WithMany("VariantSelections")
+                        .HasForeignKey("OptionValueId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_variant_option_values_product_option_values_option_value_id");
+
+                    b.HasOne("Commerce.Domain.Catalog.ProductVariant", "Variant")
+                        .WithMany("Selections")
+                        .HasForeignKey("VariantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_variant_option_values_product_variants_variant_id");
+
+                    b.Navigation("OptionValue");
+
+                    b.Navigation("Variant");
+                });
+
             modelBuilder.Entity("Commerce.Domain.Identity.AuthSession", b =>
                 {
                     b.HasOne("Commerce.Domain.Identity.AuthSession", null)
@@ -390,6 +1171,48 @@ namespace Commerce.Infrastructure.Persistence.Migrations
                     b.Navigation("Role");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Commerce.Domain.Catalog.Category", b =>
+                {
+                    b.Navigation("Children");
+
+                    b.Navigation("ProductCategories");
+                });
+
+            modelBuilder.Entity("Commerce.Domain.Catalog.Collection", b =>
+                {
+                    b.Navigation("ProductCollections");
+                });
+
+            modelBuilder.Entity("Commerce.Domain.Catalog.Product", b =>
+                {
+                    b.Navigation("Categories");
+
+                    b.Navigation("Collections");
+
+                    b.Navigation("Media");
+
+                    b.Navigation("Options");
+
+                    b.Navigation("Variants");
+                });
+
+            modelBuilder.Entity("Commerce.Domain.Catalog.ProductOption", b =>
+                {
+                    b.Navigation("Values");
+                });
+
+            modelBuilder.Entity("Commerce.Domain.Catalog.ProductOptionValue", b =>
+                {
+                    b.Navigation("VariantSelections");
+                });
+
+            modelBuilder.Entity("Commerce.Domain.Catalog.ProductVariant", b =>
+                {
+                    b.Navigation("Balance");
+
+                    b.Navigation("Selections");
                 });
 
             modelBuilder.Entity("Commerce.Domain.Identity.Role", b =>

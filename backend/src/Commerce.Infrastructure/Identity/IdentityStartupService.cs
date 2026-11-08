@@ -20,6 +20,10 @@ internal sealed partial class IdentityStartupService(
         }
 
         await using var scope = scopes.CreateAsyncScope();
+        if (scope.ServiceProvider.GetService<IHostEnvironment>()?.IsEnvironment("Testing") == true)
+        {
+            return;
+        }
         var database = scope.ServiceProvider.GetRequiredService<CommerceDbContext>();
         var pending = await database.Database.GetPendingMigrationsAsync(cancellationToken);
         if (pending.Any())

@@ -1,3 +1,4 @@
+using Commerce.Domain.Catalog;
 using Commerce.Domain.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -22,6 +23,32 @@ public sealed class CommerceDbContext(DbContextOptions<CommerceDbContext> option
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
 
     public DbSet<SecurityEvent> SecurityEvents => Set<SecurityEvent>();
+
+    public DbSet<Category> Categories => Set<Category>();
+
+    public DbSet<Collection> Collections => Set<Collection>();
+
+    public DbSet<Product> Products => Set<Product>();
+
+    public DbSet<ProductCategory> ProductCategories => Set<ProductCategory>();
+
+    public DbSet<ProductCollection> ProductCollections => Set<ProductCollection>();
+
+    public DbSet<ProductOption> ProductOptions => Set<ProductOption>();
+
+    public DbSet<ProductOptionValue> ProductOptionValues => Set<ProductOptionValue>();
+
+    public DbSet<ProductVariant> ProductVariants => Set<ProductVariant>();
+
+    public DbSet<VariantOptionValue> VariantOptionValues => Set<VariantOptionValue>();
+
+    public DbSet<InventoryBalance> InventoryBalances => Set<InventoryBalance>();
+
+    public DbSet<InventoryMovement> InventoryMovements => Set<InventoryMovement>();
+
+    public DbSet<ProductMedia> ProductMedia => Set<ProductMedia>();
+
+    public DbSet<SlugHistory> SlugHistories => Set<SlugHistory>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

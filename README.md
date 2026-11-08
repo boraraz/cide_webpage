@@ -5,8 +5,9 @@ A premium sportswear e-commerce platform with a minimal, editorial shopping expe
 The monorepo contains a mobile-first customer **storefront**, a separate **admin** dashboard, and an
 **ASP.NET Core 10** REST API backed by **PostgreSQL** and **S3-compatible object storage**.
 
-> **Status: Phase 2 (identity).** Customers can register and sign in. The admin requires an
-> administrator session. Catalogue, cart and checkout are not built yet. See
+> **Status: Phase 3 (catalog API).** Customers can register and sign in. The admin requires an
+> administrator session. The catalog, variant, inventory and media APIs exist. Storefront listing,
+> product pages, cart and checkout are not built yet. See
 > [docs/implementation-plan.md](docs/implementation-plan.md).
 >
 > The admin app is still a development tool and must not be deployed as a public site.

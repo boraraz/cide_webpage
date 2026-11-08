@@ -3,6 +3,8 @@ using Amazon.Runtime;
 using Amazon.S3;
 using Commerce.Application.Identity;
 using Commerce.Domain.Identity;
+using Commerce.Application.Catalog;
+using Commerce.Infrastructure.Catalog;
 using Commerce.Infrastructure.Identity;
 using Commerce.Infrastructure.Persistence;
 using Commerce.Infrastructure.Storage;
@@ -58,6 +60,14 @@ public static class DependencyInjection
         services.AddScoped<IdentitySeeder>();
         services.AddHostedService<IdentityStartupService>();
         services.AddHostedService<SecurityEventRetentionService>();
+        services.AddScoped<ICatalogStore, CatalogStore>();
+        services.AddScoped<ICatalogReader, CatalogReader>();
+        services.AddScoped<IObjectStorage, S3ObjectStorage>();
+        services.AddScoped<CatalogSeeder>();
+        services.AddHostedService<CatalogStartupService>();
+        services.AddOptions<CatalogOptions>()
+            .BindConfiguration(CatalogOptions.SectionName)
+            .ValidateOnStart();
 
         services.AddOptions<SmtpOptions>().BindConfiguration(SmtpOptions.SectionName);
         services.AddOptions<PublicUrlOptions>()

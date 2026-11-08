@@ -32,17 +32,17 @@ flowchart LR
 
 ## Component responsibilities
 
-| Component                 | Responsibility                                                                                   |
-| ------------------------- | ------------------------------------------------------------------------------------------------ |
-| `apps/storefront`         | Customer shop. Account, sign-in and password recovery exist. Catalogue and checkout come later.  |
-| `apps/admin`              | Back office. Sign-in is required. Catalogue and other modules are not built. Not a public site.  |
-| `packages/ui`             | Shared design tokens plus primitives (`Button`, `TextField`, `Drawer`, and others).              |
-| `packages/api-client`     | Typed `fetch` wrapper, in-memory CSRF token, and identity calls. Never stores session tokens.    |
-| `packages/shared-types`   | TypeScript types generated from the API's OpenAPI document.                                      |
-| `Commerce.Api`            | Composition root: HTTP endpoints, cookie auth, CSRF, rate limits, OpenAPI, CORS, error handling. |
-| `Commerce.Application`    | Identity use cases and persistence ports. No EF Core types.                                      |
-| `Commerce.Domain`         | Identity entities and password, email and phone rules. No EF attributes.                         |
-| `Commerce.Infrastructure` | EF Core `CommerceDbContext`, password hasher, SMTP sender, role seed and S3 health checks.       |
+| Component                 | Responsibility                                                                                            |
+| ------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `apps/storefront`         | Customer shop. Account pages exist. Catalog listing and checkout are not built.                           |
+| `apps/admin`              | Back office. Sign-in is required. Catalog navigation stays disabled. Not a public site.                   |
+| `packages/ui`             | Shared design tokens plus primitives (`Button`, `TextField`, `Drawer`, and others).                       |
+| `packages/api-client`     | Typed `fetch` wrapper, in-memory CSRF token, and identity and catalog calls. Never stores session tokens. |
+| `packages/shared-types`   | TypeScript types generated from the API's OpenAPI document.                                               |
+| `Commerce.Api`            | Composition root: HTTP endpoints, cookie auth, CSRF, rate limits, OpenAPI, CORS, error handling.          |
+| `Commerce.Application`    | Identity and catalog use cases, plus the catalog and object-storage ports. No EF Core types.              |
+| `Commerce.Domain`         | Identity and catalog entities, slug, money, SKU and publish rules. No EF attributes.                      |
+| `Commerce.Infrastructure` | EF Core `CommerceDbContext`, password hasher, SMTP, seeds, catalog queries and S3 storage.                |
 
 ## Monorepo structure
 
@@ -225,6 +225,37 @@ sequenceDiagram
 - Identity tables: `users`, `roles`, `user_roles`, `auth_sessions`, `email_verification_tokens`,
   `password_reset_tokens`, `security_events`. Passwords use ASP.NET Core's `PasswordHasher<User>`.
   The schema is not the `AspNet*` Identity tables. There is no orders table.
+- Catalog tables live in the `Catalog` migration and do not alter identity tables. Prices are
+  `numeric(12,2)` on variants only. A stored `tsvector` uses the PostgreSQL `turkish` configuration.
+  A trigger rejects category parent cycles.
+
+## Catalog and inventory
+
+Categories, collections, products, options, variants, balances, movements, media metadata and slug
+history are one module. Color and size are option names, not columns. A variant's `combination_key`
+is the sorted option-value ids, unique per product. A product with no options has one variant whose
+key is empty.
+
+Prices are tax-inclusive TRY (KDV included). JSON money is a decimal string plus `"currency": "TRY"`.
+An active variant price must be greater than zero. `compare_at_price` is null or strictly greater
+than `price`. `currency_code` is constrained to `TRY`. The public list price is the minimum active
+variant price.
+
+`inventory_balances` stores `on_hand` and `reserved`. Available quantity is computed. Phase 3 writes
+`on_hand` only and leaves `reserved` at 0. Adjustments lock the balance with `SELECT … FOR UPDATE`
+inside one transaction. `Idempotency-Key` is required. The same key and body returns the original
+movement. The same key with a different body returns 409. Phase 6 will add an
+`inventory_reservations` row and increment `reserved` under the same lock, with a worker releasing
+rows older than 30 minutes. That reservation API is not built.
+
+Slugs are unique per entity type. Turkish characters fold to ASCII. Changing a slug stores the
+previous value in `slug_histories`. A public GET by an old slug returns the current entity. The
+response `slug` is the current one. The API does not send HTTP 301.
+
+Publishing requires a name, slug, short description, description, at least one active category, at
+least one active variant with a valid SKU and price, a complete unique combination, and one primary
+image with alt text. Stock may be zero. The first publish sets `PublishedAt`. Later archive and
+publish cycles keep that timestamp. Products are archived, not hard-deleted.
 
 ## Object storage integration
 
@@ -239,8 +270,12 @@ sequenceDiagram
   - Leave the keys empty to use the AWS default credential chain, for example IAM roles.
 - **Client.** The S3 client calculates checksums only when required, for compatibility with
   S3-compatible services.
-- **Deferred.** No storage abstraction, upload endpoints or presigned URLs exist yet. They arrive
-  with the media library.
+- **Catalog media.** `IObjectStorage` is the Application port. Infrastructure implements it with
+  the S3 client against the private `sportswear-media` bucket. The admin uploads JPEG, PNG or WebP
+  (detected from the file signature, at most 5 MiB) to the API. The API writes
+  `catalog/{productId}/{mediaId}.{ext}` and streams reads back. The browser never receives a
+  storage credential or a public object URL. Public `GET /api/v1/media/{id}` streams an image only
+  when the product is `Active` and, for a variant image, that variant is active.
 
 ## Future module boundaries
 
@@ -263,16 +298,16 @@ flowchart LR
   Catalog --> Media
 ```
 
-| Module    | Owns                                                                             |
-| --------- | -------------------------------------------------------------------------------- |
-| Identity  | Customers and administrators, sessions, verification, reset and security events. |
-| Catalog   | Products, variants, categories, collections.                                     |
-| Inventory | Stock levels and reservations.                                                   |
-| Customers | Profiles, addresses and wishlists.                                               |
-| Cart      | Carts and line items.                                                            |
-| Orders    | Orders, order lines and status history.                                          |
-| Payments  | Payment provider integration (provider not chosen yet).                          |
-| Shipping  | Configurable shipping rules and rates.                                           |
-| Reviews   | Verified-purchase reviews.                                                       |
-| Content   | Homepage block editor content.                                                   |
-| Media     | Uploaded images and asset metadata in object storage.                            |
+| Module    | Owns                                                                               |
+| --------- | ---------------------------------------------------------------------------------- |
+| Identity  | Customers and administrators, sessions, verification, reset and security events.   |
+| Catalog   | Products, variants, categories, collections, media metadata and slug history.      |
+| Inventory | Per-variant balances and the append-only movement ledger. Reservations come later. |
+| Customers | Profiles, addresses and wishlists.                                                 |
+| Cart      | Carts and line items.                                                              |
+| Orders    | Orders, order lines and status history.                                            |
+| Payments  | Payment provider integration (provider not chosen yet).                            |
+| Shipping  | Configurable shipping rules and rates.                                             |
+| Reviews   | Verified-purchase reviews.                                                         |
+| Content   | Homepage block editor content.                                                     |
+| Media     | Uploaded images and asset metadata in object storage.                              |

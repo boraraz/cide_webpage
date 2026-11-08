@@ -1,3 +1,4 @@
+using Commerce.Application.Catalog;
 using Commerce.Application.Identity;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -9,6 +10,11 @@ public static class DependencyInjection
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
         services.AddScoped<IdentityService>();
+        services.AddScoped<CategoryService>();
+        services.AddScoped<CollectionService>();
+        services.AddScoped<ProductService>();
+        services.AddScoped<InventoryService>();
+        services.AddScoped<MediaService>();
         return services;
     }
 }

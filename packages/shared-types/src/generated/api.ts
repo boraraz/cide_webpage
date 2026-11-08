@@ -4,6 +4,70 @@
  */
 
 export interface paths {
+    "/api/v1/admin/options/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["DeleteProductOption"];
+        options?: never;
+        head?: never;
+        patch: operations["UpdateProductOption"];
+        trace?: never;
+    };
+    "/api/v1/admin/options/{id}/values": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["CreateOptionValue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/option-values/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["DeleteOptionValue"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/variants/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["DeleteProductVariant"];
+        options?: never;
+        head?: never;
+        patch: operations["UpdateProductVariant"];
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -272,14 +336,476 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists active categories as a tree. */
+        get: operations["ListPublicCategories"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/categories/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetPublicCategory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/collections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListPublicCollections"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/collections/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetPublicCollection"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists active products with filtering, search and stable paging. */
+        get: operations["ListPublicProducts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/products/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetPublicProduct"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/media/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetPublicMedia"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListAdminCategories"];
+        put?: never;
+        post: operations["CreateCategory"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/categories/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["DeleteCategory"];
+        options?: never;
+        head?: never;
+        patch: operations["UpdateCategory"];
+        trace?: never;
+    };
+    "/api/v1/admin/collections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListAdminCollections"];
+        put?: never;
+        post: operations["CreateCollection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/collections/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["DeleteCollection"];
+        options?: never;
+        head?: never;
+        patch: operations["UpdateCollection"];
+        trace?: never;
+    };
+    "/api/v1/admin/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListAdminProducts"];
+        put?: never;
+        post: operations["CreateProduct"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/products/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetAdminProduct"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["UpdateProduct"];
+        trace?: never;
+    };
+    "/api/v1/admin/products/{id}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PublishProduct"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/products/{id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ArchiveProduct"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/products/{id}/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["CreateProductOption"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/products/{id}/variants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["CreateProductVariant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/products/{id}/media": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["UploadProductMedia"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/inventory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListInventory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/inventory/{variantId}/movements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListInventoryMovements"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/inventory/{variantId}/adjustments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdjustInventory"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/media/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetAdminMedia"];
+        put?: never;
+        post?: never;
+        delete: operations["DeleteProductMedia"];
+        options?: never;
+        head?: never;
+        patch: operations["UpdateProductMedia"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AdminProductCard: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            slug: string;
+            status: string;
+            isFeatured: boolean;
+            /** Format: int32 */
+            variantCount: number | string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        AdminProductPage: {
+            items: components["schemas"]["AdminProductCard"][];
+            /** Format: int32 */
+            page: number | string;
+            /** Format: int32 */
+            pageSize: number | string;
+            /** Format: int32 */
+            total: number | string;
+        };
+        CategoryNode: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            slug: string;
+            description: null | string;
+            /** Format: int32 */
+            displayOrder: number | string;
+            isActive: boolean;
+            children: components["schemas"]["CategoryNode"][];
+        };
+        CategoryResponse: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            slug: string;
+            description: null | string;
+            /** Format: uuid */
+            parentCategoryId: null | string;
+            /** Format: int32 */
+            displayOrder: number | string;
+            isActive: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        CategoryUpdateRequest: {
+            name: null | string;
+            slug: null | string;
+            description: null | string;
+            /** Format: uuid */
+            parentCategoryId: null | string;
+            /** @default false */
+            clearParent: boolean;
+            /** Format: int32 */
+            displayOrder?: null | number | string;
+            isActive?: null | boolean;
+        };
+        CategoryWriteRequest: {
+            name: string;
+            slug: null | string;
+            description: null | string;
+            /** Format: uuid */
+            parentCategoryId: null | string;
+            /**
+             * Format: int32
+             * @default 0
+             */
+            displayOrder: number | string;
+            /** @default true */
+            isActive: boolean;
+        };
         ChangePasswordRequest: {
             currentPassword: null | string;
             newPassword: null | string;
             passwordConfirmation: null | string;
+        };
+        CollectionResponse: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            slug: string;
+            description: null | string;
+            /** Format: int32 */
+            displayOrder: number | string;
+            isActive: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        CollectionUpdateRequest: {
+            name: null | string;
+            slug: null | string;
+            description: null | string;
+            /** Format: int32 */
+            displayOrder: null | number | string;
+            isActive: null | boolean;
+        };
+        CollectionWriteRequest: {
+            name: string;
+            slug: null | string;
+            description: null | string;
+            /**
+             * Format: int32
+             * @default 0
+             */
+            displayOrder: number | string;
+            /** @default true */
+            isActive: boolean;
         };
         ConfirmTokenRequest: {
             token: null | string;
@@ -312,9 +838,121 @@ export interface components {
                 [key: string]: string[];
             };
         };
+        /** Format: binary */
+        IFormFile: string;
+        InventoryPage: {
+            items: components["schemas"]["InventoryRow"][];
+            /** Format: int32 */
+            page: number | string;
+            /** Format: int32 */
+            pageSize: number | string;
+            /** Format: int32 */
+            total: number | string;
+        };
+        InventoryRow: {
+            /** Format: uuid */
+            variantId: string;
+            sku: string;
+            /** Format: uuid */
+            productId: string;
+            productName: string;
+            /** Format: int32 */
+            onHand: number | string;
+            /** Format: int32 */
+            reserved: number | string;
+            /** Format: int32 */
+            available: number | string;
+        };
         LoginRequest: {
             email: null | string;
             password: null | string;
+        };
+        MediaResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            variantId: null | string;
+            altText: string;
+            /** Format: int32 */
+            displayOrder: number | string;
+            isPrimary: boolean;
+            contentType: string;
+            /** Format: int64 */
+            fileSize: number | string;
+            path: string;
+        };
+        MediaUpdateRequest: {
+            altText: null | string;
+            /** Format: int32 */
+            displayOrder: null | number | string;
+            isPrimary: null | boolean;
+            /** Format: uuid */
+            variantId: null | string;
+            /** @default false */
+            clearVariant: boolean;
+        };
+        MovementResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            variantId: string;
+            movementType: string;
+            /** Format: int32 */
+            quantityDelta: number | string;
+            /** Format: int32 */
+            onHandAfter: number | string;
+            /** Format: int32 */
+            reservedAfter: number | string;
+            note: null | string;
+            /** Format: uuid */
+            actorUserId: null | string;
+            idempotencyKey: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        NamedSlug: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            slug: string;
+        };
+        OptionResponse: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** Format: int32 */
+            position: number | string;
+            values: components["schemas"]["OptionValueResponse"][];
+        };
+        OptionUpdateRequest: {
+            name: null | string;
+            /** Format: int32 */
+            position: null | number | string;
+        };
+        OptionValueResponse: {
+            /** Format: uuid */
+            id: string;
+            value: string;
+            code: null | string;
+            /** Format: int32 */
+            position: number | string;
+        };
+        OptionValueWriteRequest: {
+            value: string;
+            code: null | string;
+            /**
+             * Format: int32
+             * @default 0
+             */
+            position: number | string;
+        };
+        OptionWriteRequest: {
+            name: string;
+            /**
+             * Format: int32
+             * @default 0
+             */
+            position: number | string;
         };
         ProblemDetails: {
             type?: null | string;
@@ -323,6 +961,103 @@ export interface components {
             status?: null | number | string;
             detail?: null | string;
             instance?: null | string;
+        };
+        ProductPage: {
+            items: components["schemas"]["PublicProductCard"][];
+            /** Format: int32 */
+            page: number | string;
+            /** Format: int32 */
+            pageSize: number | string;
+            /** Format: int32 */
+            total: number | string;
+        };
+        ProductResponse: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            slug: string;
+            shortDescription: string;
+            description: string;
+            brand: null | string;
+            isFeatured: boolean;
+            status: string;
+            /** Format: date-time */
+            publishedAt: null | string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            categories: components["schemas"]["NamedSlug"][];
+            collections: components["schemas"]["NamedSlug"][];
+            options: components["schemas"]["OptionResponse"][];
+            variants: components["schemas"]["VariantResponse"][];
+            media: components["schemas"]["MediaResponse"][];
+        };
+        ProductUpdateRequest: {
+            name: null | string;
+            slug: null | string;
+            shortDescription: null | string;
+            description: null | string;
+            brand: null | string;
+            isFeatured: null | boolean;
+            categoryIds: null | string[];
+            collectionIds: null | string[];
+        };
+        ProductWriteRequest: {
+            name: string;
+            slug: null | string;
+            shortDescription: null | string;
+            description: null | string;
+            brand: null | string;
+            /** @default false */
+            isFeatured: boolean;
+            categoryIds?: null | string[];
+            collectionIds?: null | string[];
+        };
+        PublicProductCard: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            slug: string;
+            shortDescription: string;
+            brand: null | string;
+            isFeatured: boolean;
+            fromPrice: string;
+            currency: string;
+            available: boolean;
+            /** Format: uuid */
+            primaryMediaId: null | string;
+        };
+        PublicProductDetail: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            slug: string;
+            shortDescription: string;
+            description: string;
+            brand: null | string;
+            isFeatured: boolean;
+            /** Format: date-time */
+            publishedAt: null | string;
+            fromPrice: string;
+            currency: string;
+            available: boolean;
+            categories: components["schemas"]["NamedSlug"][];
+            collections: components["schemas"]["NamedSlug"][];
+            options: components["schemas"]["OptionResponse"][];
+            variants: components["schemas"]["PublicVariantResponse"][];
+            media: components["schemas"]["MediaResponse"][];
+        };
+        PublicVariantResponse: {
+            /** Format: uuid */
+            id: string;
+            sku: string;
+            isActive: boolean;
+            price: string;
+            compareAtPrice: null | string;
+            currency: string;
+            available: boolean;
+            options: components["schemas"]["SelectedOptionResponse"][];
         };
         ReadinessResponse: {
             status: string;
@@ -340,6 +1075,17 @@ export interface components {
             password: null | string;
             passwordConfirmation: null | string;
         };
+        SelectedOptionResponse: {
+            name: string;
+            value: string;
+            code: null | string;
+        };
+        StockAdjustmentRequest: {
+            movementType: string;
+            /** Format: int32 */
+            quantity: number | string;
+            note: null | string;
+        };
         UpdateProfileRequest: {
             firstName: null | string;
             lastName: null | string;
@@ -355,6 +1101,47 @@ export interface components {
             emailVerified: boolean;
             roles: string[];
         };
+        VariantResponse: {
+            /** Format: uuid */
+            id: string;
+            sku: string;
+            barcode: null | string;
+            isActive: boolean;
+            price: string;
+            compareAtPrice: null | string;
+            currency: string;
+            /** Format: int32 */
+            onHand: number | string;
+            /** Format: int32 */
+            reserved: number | string;
+            /** Format: int32 */
+            available: number | string;
+            options: components["schemas"]["SelectedOptionResponse"][];
+        };
+        VariantUpdateRequest: {
+            sku: null | string;
+            barcode: null | string;
+            price: null | string;
+            compareAtPrice: null | string;
+            /** @default false */
+            clearCompareAtPrice: boolean;
+            isActive?: null | boolean;
+            optionValueIds?: null | string[];
+        };
+        VariantWriteRequest: {
+            sku: string;
+            barcode: null | string;
+            price: string;
+            compareAtPrice: null | string;
+            /** @default true */
+            isActive: boolean;
+            optionValueIds?: null | string[];
+            /**
+             * Format: int32
+             * @default 0
+             */
+            initialQuantity: number | string;
+        };
     };
     responses: never;
     parameters: never;
@@ -364,6 +1151,153 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    DeleteProductOption: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    UpdateProductOption: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OptionUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OptionResponse"];
+                };
+            };
+        };
+    };
+    CreateOptionValue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OptionValueWriteRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OptionValueResponse"];
+                };
+            };
+        };
+    };
+    DeleteOptionValue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    DeleteProductVariant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    UpdateProductVariant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VariantUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VariantResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+        };
+    };
     GetHealth: {
         parameters: {
             query?: never;
@@ -830,6 +1764,839 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListPublicCategories: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryNode"][];
+                };
+            };
+        };
+    };
+    GetPublicCategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryNode"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ListPublicCollections: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CollectionResponse"][];
+                };
+            };
+        };
+    };
+    GetPublicCollection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CollectionResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ListPublicProducts: {
+        parameters: {
+            query?: {
+                page?: number | string;
+                pageSize?: number | string;
+                category?: string;
+                collection?: string;
+                color?: string;
+                size?: string;
+                minPrice?: string;
+                maxPrice?: string;
+                available?: boolean;
+                q?: string;
+                sort?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductPage"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+        };
+    };
+    GetPublicProduct: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicProductDetail"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    GetPublicMedia: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ListAdminCategories: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryNode"][];
+                };
+            };
+        };
+    };
+    CreateCategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CategoryWriteRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+        };
+    };
+    DeleteCategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    UpdateCategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CategoryUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+        };
+    };
+    ListAdminCollections: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CollectionResponse"][];
+                };
+            };
+        };
+    };
+    CreateCollection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CollectionWriteRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CollectionResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+        };
+    };
+    DeleteCollection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    UpdateCollection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CollectionUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CollectionResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+        };
+    };
+    ListAdminProducts: {
+        parameters: {
+            query?: {
+                page?: number | string;
+                pageSize?: number | string;
+                status?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminProductPage"];
+                };
+            };
+        };
+    };
+    CreateProduct: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProductWriteRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+        };
+    };
+    GetAdminProduct: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    UpdateProduct: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProductUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+        };
+    };
+    PublishProduct: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+        };
+    };
+    ArchiveProduct: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductResponse"];
+                };
+            };
+        };
+    };
+    CreateProductOption: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OptionWriteRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OptionResponse"];
+                };
+            };
+        };
+    };
+    CreateProductVariant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VariantWriteRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VariantResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+        };
+    };
+    UploadProductMedia: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    file: components["schemas"]["IFormFile"];
+                } & {
+                    altText: string;
+                } & {
+                    /** Format: uuid */
+                    variantId?: string;
+                } & {
+                    /** Format: int32 */
+                    displayOrder?: number | string;
+                } & {
+                    isPrimary?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaResponse"];
+                };
+            };
+        };
+    };
+    ListInventory: {
+        parameters: {
+            query?: {
+                page?: number | string;
+                pageSize?: number | string;
+                sku?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InventoryPage"];
+                };
+            };
+        };
+    };
+    ListInventoryMovements: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                variantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovementResponse"][];
+                };
+            };
+        };
+    };
+    AdjustInventory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                variantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StockAdjustmentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovementResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetAdminMedia: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    DeleteProductMedia: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    UpdateProductMedia: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MediaUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaResponse"];
                 };
             };
         };

@@ -194,8 +194,9 @@ the generated file.
 
 ### EF Core migrations
 
-`npm run api:migrate` applies pending migrations to the local database. The API never migrates on
-startup. If migrations are pending, the role seeder logs a warning and skips.
+`npm run api:migrate` applies pending migrations to the local database, including the catalog
+migration. The API never migrates on startup. If migrations are pending, the role and catalog
+seeders log a warning and skip. Do not drop the Postgres volume to upgrade.
 
 ```bash
 ASPNETCORE_ENVIRONMENT=Development dotnet tool run dotnet-ef migrations add <Name> \
@@ -230,15 +231,49 @@ To create the first administrator:
 Production refuses to start when `Identity:BootstrapAdmin` is true. No migration contains a password.
 Role names `customer` and `admin` are seeded when `Identity:SeedRoles` is true.
 
+### Catalog seed
+
+`Catalog:SeedSampleData` is false in `appsettings.json` and true only in Development. On startup the
+seeder inserts Women, Men, Unisex, nested Tops and Bottoms, the New Arrivals and Training Essentials
+collections, and three sample products when those slugs are missing. It never updates a row that
+already exists. Production cannot enable the seed by leaving the Development file behind.
+
+Sample product images are metadata only. A public or admin media GET returns 404 until a file is
+uploaded through `POST /api/v1/admin/products/{id}/media`.
+
+### Catalog endpoints
+
+Public, anonymous, no CSRF:
+
+- `GET /api/v1/categories` and `GET /api/v1/categories/{slug}`
+- `GET /api/v1/collections` and `GET /api/v1/collections/{slug}`
+- `GET /api/v1/products` with `page`, `pageSize` (default 24, max 48), `category`, `collection`,
+  `color`, `size`, `minPrice`, `maxPrice`, `available`, `q` and `sort`
+  (`newest`, `price_asc`, `price_desc`)
+- `GET /api/v1/products/{slug}`
+- `GET /api/v1/media/{id}`
+
+Admin, role `admin`, CSRF on POST, PATCH and DELETE:
+
+- Categories and collections under `/api/v1/admin/categories` and `/api/v1/admin/collections`
+- Products under `/api/v1/admin/products`, including `publish` and `archive`. Status is not patched.
+- Options, option values and variants under the product, `/api/v1/admin/options`,
+  `/api/v1/admin/option-values` and `/api/v1/admin/variants`
+- `GET /api/v1/admin/inventory`, movements, and `POST …/adjustments` with header `Idempotency-Key`
+- Media upload, update, delete and admin stream
+
+Prices in JSON are decimal strings such as `"1299.00"` with `"currency": "TRY"`. They are the
+tax-inclusive amount. The client must not turn them into binary floating-point values.
+
 ## Tests
 
-| Command                                   | What runs                                                                                 |
-| ----------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `npm run test`                            | Frontend Vitest suites (jsdom)                                                            |
-| `npm run api:test`                        | xUnit v3 unit and integration tests. Identity tests start their own PostgreSQL container. |
-| `COMMERCE_INFRA_TESTS=1 npm run api:test` | Also runs the readiness test against real PostgreSQL and object storage                   |
-| `npm run test:all`                        | Frontend and backend tests                                                                |
-| `npm run verify`                          | Format check, lint, typecheck, tests and builds: the pre-commit gate                      |
+| Command                                   | What runs                                                                                                          |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `npm run test`                            | Frontend Vitest suites (jsdom)                                                                                     |
+| `npm run api:test`                        | xUnit v3 unit and integration tests. Catalog and identity tests start their own PostgreSQL containers.             |
+| `COMMERCE_INFRA_TESTS=1 npm run api:test` | Also runs readiness and one `catalog-tests/` object round trip against local RustFS. It does not empty the bucket. |
+| `npm run test:all`                        | Frontend and backend tests                                                                                         |
+| `npm run verify`                          | Format check, lint, typecheck, tests and builds: the pre-commit gate                                               |
 
 The backend uses Microsoft.Testing.Platform, configured in `global.json`. Use
 `dotnet test --solution backend/Commerce.slnx`. Do not pass `--nologo`: the test host treats it as

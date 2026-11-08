@@ -1,7 +1,9 @@
 using Commerce.Api.Auth;
+using Commerce.Api.Catalog;
 using Commerce.Api.Cors;
 using Commerce.Api.Endpoints;
 using Commerce.Api.Errors;
+using Microsoft.AspNetCore.Http.Features;
 using Commerce.Application;
 using Commerce.Infrastructure;
 using Microsoft.AspNetCore.HttpLogging;
@@ -27,6 +29,9 @@ builder.Services.AddOpenApi();
 builder.Services.AddFrontendCors();
 builder.Services.AddSessionAuthentication(builder.Environment);
 builder.Services.AddAuthRateLimits();
+builder.Services.AddCatalogRateLimits();
+builder.Services.Configure<FormOptions>(options =>
+    options.MultipartBodyLengthLimit = 5 * 1024 * 1024 + (64 * 1024));
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure();
@@ -59,5 +64,7 @@ app.MapHealthEndpoints();
 app.MapAuthEndpoints();
 app.MapAccountEndpoints();
 app.MapAdminAuthEndpoints();
+app.MapPublicCatalogEndpoints();
+app.MapAdminCatalogEndpoints();
 
 app.Run();
