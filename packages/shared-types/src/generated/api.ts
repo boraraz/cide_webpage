@@ -4,6 +4,22 @@
  */
 
 export interface paths {
+    "/api/v1/admin/dashboard/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetDashboardSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/options/{id}": {
         parameters: {
             query?: never;
@@ -66,6 +82,38 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["UpdateProductVariant"];
+        trace?: never;
+    };
+    "/api/v1/content/homepage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetPublicHomepage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/content/media/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetPublicContentMedia"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/health": {
@@ -514,6 +562,38 @@ export interface paths {
         patch: operations["UpdateCollection"];
         trace?: never;
     };
+    "/api/v1/admin/collections/{id}/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AssignCollectionProduct"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/collections/{id}/products/{productId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["RemoveCollectionProduct"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/products": {
         parameters: {
             query?: never;
@@ -610,6 +690,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/products/{id}/variants/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["CreateProductVariants"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/products/{id}/media/order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["OrderProductMedia"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/products/{id}/media": {
         parameters: {
             query?: never;
@@ -634,6 +746,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["ListInventory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/inventory/movements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListInventoryMovementHistory"];
         put?: never;
         post?: never;
         delete?: never;
@@ -690,6 +818,118 @@ export interface paths {
         patch: operations["UpdateProductMedia"];
         trace?: never;
     };
+    "/api/v1/admin/content/homepage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetHomepageDraft"];
+        put: operations["SaveHomepageDraft"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/content/homepage/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PublishHomepage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/content/homepage/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PreviewHomepage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/content/homepage/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListHomepageRevisions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/content/homepage/revisions/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["RestoreHomepageRevision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/content/media": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["UploadContentMedia"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/content/media/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetAdminContentMedia"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -705,6 +945,19 @@ export interface components {
             variantCount: number | string;
             /** Format: date-time */
             updatedAt: string;
+            /** Format: int32 */
+            version: number | string;
+            /** Format: uuid */
+            primaryMediaId: null | string;
+            skuSummary: null | string;
+            categoryName: null | string;
+            minPrice: null | string;
+            maxPrice: null | string;
+            currency: string;
+            /** Format: int32 */
+            onHand: number | string;
+            /** Format: int32 */
+            available: number | string;
         };
         AdminProductPage: {
             items: components["schemas"]["AdminProductCard"][];
@@ -773,6 +1026,12 @@ export interface components {
             newPassword: null | string;
             passwordConfirmation: null | string;
         };
+        CollectionProductRequest: {
+            /** Format: uuid */
+            productId: string;
+            /** Format: int32 */
+            expectedVersion?: null | number | string;
+        };
         CollectionResponse: {
             /** Format: uuid */
             id: string;
@@ -810,8 +1069,44 @@ export interface components {
         ConfirmTokenRequest: {
             token: null | string;
         };
+        ContentMediaResponse: {
+            /** Format: uuid */
+            id: string;
+            altText: string;
+            contentType: string;
+            /** Format: int64 */
+            byteSize: number | string;
+            /** Format: int32 */
+            width: null | number | string;
+            /** Format: int32 */
+            height: null | number | string;
+            path: string;
+            sources: components["schemas"]["MediaSource"][];
+        };
         CsrfResponse: {
             token: string;
+        };
+        DashboardSummary: {
+            /** Format: int32 */
+            totalProducts: number | string;
+            /** Format: int32 */
+            publishedProducts: number | string;
+            /** Format: int32 */
+            draftProducts: number | string;
+            /** Format: int32 */
+            archivedProducts: number | string;
+            /** Format: int32 */
+            activeVariants: number | string;
+            /** Format: int32 */
+            outOfStockVariants: number | string;
+            /** Format: int32 */
+            lowStockVariants: number | string;
+            /** Format: int32 */
+            categories: number | string;
+            /** Format: int32 */
+            collections: number | string;
+            /** Format: int32 */
+            lowStockThreshold: number | string;
         };
         DependencyHealth: {
             name: string;
@@ -826,6 +1121,36 @@ export interface components {
             version: string;
             /** Format: date-time */
             timestampUtc: string;
+        };
+        HomepageDraftResponse: {
+            /** Format: int32 */
+            draftVersion: number | string;
+            /** Format: uuid */
+            draftRevisionId: null | string;
+            /** Format: uuid */
+            publishedRevisionId: null | string;
+            /** Format: date-time */
+            publishedAt: null | string;
+            configuration: components["schemas"]["JsonElement"];
+        };
+        HomepageIssue: {
+            blockId: string;
+            message: string;
+        };
+        HomepagePreviewResponse: {
+            /** Format: date-time */
+            publishedAt: null | string;
+            blocks: components["schemas"]["PublicBlockResponse"][];
+            issues: components["schemas"]["HomepageIssue"][];
+        };
+        HomepageVersionRequest: {
+            /** Format: int32 */
+            expectedVersion: number | string;
+        };
+        HomepageWriteRequest: {
+            configuration: null | string;
+            /** Format: int32 */
+            expectedVersion: number | string;
         };
         HttpValidationProblemDetails: {
             type?: null | string;
@@ -862,10 +1187,17 @@ export interface components {
             reserved: number | string;
             /** Format: int32 */
             available: number | string;
+            optionSummary: string;
         };
+        JsonElement: unknown;
         LoginRequest: {
             email: null | string;
             password: null | string;
+        };
+        MediaOrderRequest: {
+            ids: string[];
+            /** Format: int32 */
+            expectedVersion?: null | number | string;
         };
         MediaResponse: {
             /** Format: uuid */
@@ -880,6 +1212,17 @@ export interface components {
             /** Format: int64 */
             fileSize: number | string;
             path: string;
+            /** Format: int32 */
+            width: null | number | string;
+            /** Format: int32 */
+            height: null | number | string;
+            sources: components["schemas"]["MediaSource"][];
+        };
+        MediaSource: {
+            url: string;
+            /** Format: int32 */
+            width: null | number | string;
+            mimeType: string;
         };
         MediaUpdateRequest: {
             altText: null | string;
@@ -890,6 +1233,42 @@ export interface components {
             variantId: null | string;
             /** @default false */
             clearVariant: boolean;
+            /** Format: int32 */
+            expectedVersion?: null | number | string;
+        };
+        MovementListItem: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            variantId: string;
+            /** Format: uuid */
+            productId: string;
+            productName: string;
+            sku: string;
+            optionSummary: string;
+            movementType: string;
+            /** Format: int32 */
+            quantityDelta: number | string;
+            /** Format: int32 */
+            onHandAfter: number | string;
+            /** Format: int32 */
+            reservedAfter: number | string;
+            note: null | string;
+            /** Format: uuid */
+            actorUserId: null | string;
+            actorEmail: null | string;
+            idempotencyKey: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        MovementPage: {
+            items: components["schemas"]["MovementListItem"][];
+            /** Format: int32 */
+            page: number | string;
+            /** Format: int32 */
+            pageSize: number | string;
+            /** Format: int32 */
+            total: number | string;
         };
         MovementResponse: {
             /** Format: uuid */
@@ -923,11 +1302,15 @@ export interface components {
             /** Format: int32 */
             position: number | string;
             values: components["schemas"]["OptionValueResponse"][];
+            /** Format: int32 */
+            productVersion: number | string;
         };
         OptionUpdateRequest: {
             name: null | string;
             /** Format: int32 */
             position: null | number | string;
+            /** Format: int32 */
+            expectedVersion?: null | number | string;
         };
         OptionValueResponse: {
             /** Format: uuid */
@@ -945,6 +1328,8 @@ export interface components {
              * @default 0
              */
             position: number | string;
+            /** Format: int32 */
+            expectedVersion?: null | number | string;
         };
         OptionWriteRequest: {
             name: string;
@@ -953,6 +1338,8 @@ export interface components {
              * @default 0
              */
             position: number | string;
+            /** Format: int32 */
+            expectedVersion?: null | number | string;
         };
         ProblemDetails: {
             type?: null | string;
@@ -992,6 +1379,8 @@ export interface components {
             options: components["schemas"]["OptionResponse"][];
             variants: components["schemas"]["VariantResponse"][];
             media: components["schemas"]["MediaResponse"][];
+            /** Format: int32 */
+            version: number | string;
         };
         ProductUpdateRequest: {
             name: null | string;
@@ -1002,6 +1391,12 @@ export interface components {
             isFeatured: null | boolean;
             categoryIds: null | string[];
             collectionIds: null | string[];
+            /** Format: int32 */
+            expectedVersion?: null | number | string;
+        };
+        ProductVersionBody: {
+            /** Format: int32 */
+            expectedVersion: null | number | string;
         };
         ProductWriteRequest: {
             name: string;
@@ -1013,6 +1408,16 @@ export interface components {
             isFeatured: boolean;
             categoryIds?: null | string[];
             collectionIds?: null | string[];
+        };
+        PublicBlockResponse: {
+            id: string;
+            type: string;
+            config: components["schemas"]["JsonElement"];
+        };
+        PublicHomepageResponse: {
+            /** Format: date-time */
+            publishedAt: null | string;
+            blocks: components["schemas"]["PublicBlockResponse"][];
         };
         PublicProductCard: {
             /** Format: uuid */
@@ -1075,6 +1480,16 @@ export interface components {
             password: null | string;
             passwordConfirmation: null | string;
         };
+        RevisionSummary: {
+            /** Format: uuid */
+            id: string;
+            /** Format: int32 */
+            version: number | string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: uuid */
+            createdByUserId: string;
+        };
         SelectedOptionResponse: {
             name: string;
             value: string;
@@ -1101,6 +1516,11 @@ export interface components {
             emailVerified: boolean;
             roles: string[];
         };
+        VariantBulkRequest: {
+            variants: components["schemas"]["VariantWriteRequest"][];
+            /** Format: int32 */
+            expectedVersion?: null | number | string;
+        };
         VariantResponse: {
             /** Format: uuid */
             id: string;
@@ -1117,6 +1537,8 @@ export interface components {
             /** Format: int32 */
             available: number | string;
             options: components["schemas"]["SelectedOptionResponse"][];
+            /** Format: int32 */
+            productVersion: number | string;
         };
         VariantUpdateRequest: {
             sku: null | string;
@@ -1127,6 +1549,8 @@ export interface components {
             clearCompareAtPrice: boolean;
             isActive?: null | boolean;
             optionValueIds?: null | string[];
+            /** Format: int32 */
+            expectedVersion?: null | number | string;
         };
         VariantWriteRequest: {
             sku: string;
@@ -1141,6 +1565,8 @@ export interface components {
              * @default 0
              */
             initialQuantity: number | string;
+            /** Format: int32 */
+            expectedVersion?: null | number | string;
         };
     };
     responses: never;
@@ -1151,9 +1577,31 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    DeleteProductOption: {
+    GetDashboardSummary: {
         parameters: {
             query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardSummary"];
+                };
+            };
+        };
+    };
+    DeleteProductOption: {
+        parameters: {
+            query?: {
+                expectedVersion?: number | string;
+            };
             header?: never;
             path: {
                 id: string;
@@ -1225,7 +1673,9 @@ export interface operations {
     };
     DeleteOptionValue: {
         parameters: {
-            query?: never;
+            query?: {
+                expectedVersion?: number | string;
+            };
             header?: never;
             path: {
                 id: string;
@@ -1245,7 +1695,9 @@ export interface operations {
     };
     DeleteProductVariant: {
         parameters: {
-            query?: never;
+            query?: {
+                expectedVersion?: number | string;
+            };
             header?: never;
             path: {
                 id: string;
@@ -1295,6 +1747,46 @@ export interface operations {
                 content: {
                     "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
                 };
+            };
+        };
+    };
+    GetPublicHomepage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicHomepageResponse"];
+                };
+            };
+        };
+    };
+    GetPublicContentMedia: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -2172,12 +2664,63 @@ export interface operations {
             };
         };
     };
+    AssignCollectionProduct: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CollectionProductRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    RemoveCollectionProduct: {
+        parameters: {
+            query?: {
+                expectedVersion?: number | string;
+            };
+            header?: never;
+            path: {
+                id: string;
+                productId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     ListAdminProducts: {
         parameters: {
             query?: {
                 page?: number | string;
                 pageSize?: number | string;
                 status?: string;
+                q?: string;
+                categoryId?: string;
+                collectionId?: string;
+                sort?: string;
             };
             header?: never;
             path?: never;
@@ -2302,7 +2845,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProductVersionBody"];
+            };
+        };
         responses: {
             /** @description OK */
             200: {
@@ -2333,7 +2880,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProductVersionBody"];
+            };
+        };
         responses: {
             /** @description OK */
             200: {
@@ -2407,6 +2958,67 @@ export interface operations {
             };
         };
     };
+    CreateProductVariants: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VariantBulkRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VariantResponse"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+        };
+    };
+    OrderProductMedia: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MediaOrderRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductResponse"];
+                };
+            };
+        };
+    };
     UploadProductMedia: {
         parameters: {
             query?: never;
@@ -2430,6 +3042,9 @@ export interface operations {
                     displayOrder?: number | string;
                 } & {
                     isPrimary?: boolean;
+                } & {
+                    /** Format: int32 */
+                    expectedVersion?: number | string;
                 };
             };
         };
@@ -2450,7 +3065,9 @@ export interface operations {
             query?: {
                 page?: number | string;
                 pageSize?: number | string;
+                q?: string;
                 sku?: string;
+                stock?: string;
             };
             header?: never;
             path?: never;
@@ -2465,6 +3082,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InventoryPage"];
+                };
+            };
+        };
+    };
+    ListInventoryMovementHistory: {
+        parameters: {
+            query?: {
+                page?: number | string;
+                pageSize?: number | string;
+                sku?: string;
+                variantId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovementPage"];
                 };
             };
         };
@@ -2557,7 +3199,9 @@ export interface operations {
     };
     DeleteProductMedia: {
         parameters: {
-            query?: never;
+            query?: {
+                expectedVersion?: number | string;
+            };
             header?: never;
             path: {
                 id: string;
@@ -2598,6 +3242,215 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["MediaResponse"];
                 };
+            };
+        };
+    };
+    GetHomepageDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HomepageDraftResponse"];
+                };
+            };
+        };
+    };
+    SaveHomepageDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HomepageWriteRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HomepageDraftResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+        };
+    };
+    PublishHomepage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HomepageVersionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HomepageDraftResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+        };
+    };
+    PreviewHomepage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HomepagePreviewResponse"];
+                };
+            };
+        };
+    };
+    ListHomepageRevisions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionSummary"][];
+                };
+            };
+        };
+    };
+    RestoreHomepageRevision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HomepageVersionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HomepageDraftResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+        };
+    };
+    UploadContentMedia: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    file: components["schemas"]["IFormFile"];
+                } & {
+                    altText: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContentMediaResponse"];
+                };
+            };
+        };
+    };
+    GetAdminContentMedia: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

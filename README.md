@@ -5,22 +5,22 @@ A premium sportswear e-commerce platform with a minimal, editorial shopping expe
 The monorepo contains a mobile-first customer **storefront**, a separate **admin** dashboard, and an
 **ASP.NET Core 10** REST API backed by **PostgreSQL** and **S3-compatible object storage**.
 
-> **Status: Phase 3 (catalog API).** Customers can register and sign in. The admin requires an
-> administrator session. The catalog, variant, inventory and media APIs exist. Storefront listing,
-> product pages, cart and checkout are not built yet. See
+> **Status: Phase 4 (admin catalog and homepage CMS).** Customers can register and sign in. The admin
+> requires an administrator session and can manage the catalogue, stock and homepage. Storefront
+> listing, product pages, cart and checkout are not built yet. See
 > [docs/implementation-plan.md](docs/implementation-plan.md).
 >
 > The admin app is still a development tool and must not be deployed as a public site.
 
 ## Stack
 
-| Area           | Technology                                                                                                             |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Frontends      | React 19, TypeScript (strict), Vite 8, Tailwind CSS v4, React Router 8, TanStack Query 5, React Hook Form, Zod, Lucide |
-| Shared         | npm workspaces: `@commerce/ui`, `@commerce/api-client`, `@commerce/shared-types` (generated from OpenAPI)              |
-| Backend        | .NET 10, ASP.NET Core minimal APIs, EF Core with Npgsql, OpenAPI with Scalar, ProblemDetails                           |
-| Infrastructure | PostgreSQL 18, RustFS (S3-compatible) and Mailpit via Docker Compose on OrbStack                                       |
-| Quality        | ESLint, Prettier, Vitest with Testing Library, xUnit v3                                                                |
+| Area           | Technology                                                                                                                     |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Frontends      | React 19, TypeScript (strict), Vite 8, Tailwind CSS v4, React Router 8, TanStack Query 5, React Hook Form, Zod, Lucide         |
+| Shared         | npm workspaces: `@commerce/ui`, `@commerce/content`, `@commerce/api-client`, `@commerce/shared-types` (generated from OpenAPI) |
+| Backend        | .NET 10, ASP.NET Core minimal APIs, EF Core with Npgsql, OpenAPI with Scalar, ProblemDetails                                   |
+| Infrastructure | PostgreSQL 18, RustFS (S3-compatible) and Mailpit via Docker Compose on OrbStack                                               |
+| Quality        | ESLint, Prettier, Vitest with Testing Library, xUnit v3                                                                        |
 
 ## Quick start
 

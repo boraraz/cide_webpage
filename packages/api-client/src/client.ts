@@ -34,6 +34,7 @@ export interface ApiClient {
   put<T>(path: string, body?: unknown, options?: MethodOptions): Promise<T>;
   patch<T>(path: string, body?: unknown, options?: MethodOptions): Promise<T>;
   delete<T>(path: string, options?: MethodOptions): Promise<T>;
+  blob(path: string): Promise<Blob>;
 }
 
 export function createApiClient(options: ApiClientOptions): ApiClient {
@@ -94,6 +95,19 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     put: (path, body, opts) => request(path, { ...opts, method: 'PUT', body }),
     patch: (path, body, opts) => request(path, { ...opts, method: 'PATCH', body }),
     delete: (path, opts) => request(path, { ...opts, method: 'DELETE' }),
+    blob: async (path) => {
+      const headers = new Headers();
+      await options.prepareHeaders?.(headers);
+      const response = await fetchImpl(buildUrl(baseUrl, path), {
+        method: 'GET',
+        headers,
+        credentials,
+      });
+      if (!response.ok) {
+        throw createHttpError(response, undefined);
+      }
+      return response.blob();
+    },
   };
 }
 

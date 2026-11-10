@@ -45,9 +45,10 @@ public static class CatalogMapper
             .Select(link => new NamedSlug(link.Collection.Id, link.Collection.Name, link.Collection.Slug))
             .OrderBy(link => link.Name)
             .ToArray(),
-        product.Options.OrderBy(option => option.Position).ThenBy(option => option.Name).Select(Option).ToArray(),
-        product.Variants.OrderBy(variant => variant.Sku).Select(variant => Variant(variant, includeStock)).ToArray(),
-        product.Media.OrderBy(media => media.DisplayOrder).ThenBy(media => media.CreatedAt).Select(Media).ToArray());
+        product.Options.OrderBy(option => option.Position).ThenBy(option => option.Name).Select(option => Option(option, product.Version)).ToArray(),
+        product.Variants.OrderBy(variant => variant.Sku).Select(variant => Variant(variant, includeStock, product.Version)).ToArray(),
+        product.Media.OrderBy(media => media.DisplayOrder).ThenBy(media => media.CreatedAt).Select(Media).ToArray(),
+        product.Version);
 
     public static MovementResponse Movement(InventoryMovement movement) => new(
         movement.Id,
@@ -63,7 +64,10 @@ public static class CatalogMapper
 
     public static string MediaPath(Guid id) => $"/api/v1/media/{id}";
 
-    private static OptionResponse Option(ProductOption option) => new(
+    public static IReadOnlyList<MediaSource> Sources(ProductMedia media) =>
+        [new(MediaPath(media.Id), media.Width, media.ContentType)];
+
+    private static OptionResponse Option(ProductOption option, int productVersion) => new(
         option.Id,
         option.Name,
         option.Position,
@@ -71,9 +75,10 @@ public static class CatalogMapper
             .OrderBy(value => value.Position)
             .ThenBy(value => value.Value)
             .Select(value => new OptionValueResponse(value.Id, value.Value, value.Code, value.Position))
-            .ToArray());
+            .ToArray(),
+        productVersion);
 
-    private static VariantResponse Variant(ProductVariant variant, bool includeStock)
+    private static VariantResponse Variant(ProductVariant variant, bool includeStock, int productVersion)
     {
         var balance = variant.Balance;
         return new VariantResponse(
@@ -87,7 +92,8 @@ public static class CatalogMapper
             includeStock ? balance?.OnHand ?? 0 : 0,
             includeStock ? balance?.Reserved ?? 0 : 0,
             includeStock ? balance?.Available ?? 0 : 0,
-            Selections(variant));
+            Selections(variant),
+            productVersion);
     }
 
     private static IReadOnlyList<SelectedOptionResponse> Selections(ProductVariant variant) =>
@@ -99,7 +105,7 @@ public static class CatalogMapper
                 selection.OptionValue.Code))
             .ToArray();
 
-    private static MediaResponse Media(ProductMedia media) => new(
+    public static MediaResponse Media(ProductMedia media) => new(
         media.Id,
         media.VariantId,
         media.AltText,
@@ -107,5 +113,8 @@ public static class CatalogMapper
         media.IsPrimary,
         media.ContentType,
         media.FileSize,
-        MediaPath(media.Id));
+        MediaPath(media.Id),
+        media.Width,
+        media.Height,
+        Sources(media));
 }

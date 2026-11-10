@@ -1,13 +1,72 @@
+using System.Data;
 using Commerce.Application.Catalog;
 using Commerce.Domain.Catalog;
 using Commerce.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;
 
 namespace Commerce.Infrastructure.Catalog;
 
 internal sealed class CatalogStore(CommerceDbContext database, TimeProvider time) : ICatalogStore
 {
+    public async Task<CatalogResult<int>> SaveProductGraphAsync(
+        Product product,
+        int? expectedVersion,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        if (expectedVersion is int expected && product.Version != expected)
+        {
+            return CatalogResult<int>.Conflict("expectedVersion", CatalogSupport.StaleProductMessage, currentVersion: product.Version);
+        }
+
+        var ownsTransaction = database.Database.CurrentTransaction is null;
+        var transaction = ownsTransaction ? await database.Database.BeginTransactionAsync(cancellationToken) : null;
+        try
+        {
+            var version = await AdvanceProductVersionAsync(product.Id, expectedVersion, now, cancellationToken);
+            if (version is null)
+            {
+                if (ownsTransaction)
+                {
+                    await transaction!.RollbackAsync(cancellationToken);
+                }
+
+                var current = await database.Products.AsNoTracking()
+                    .Where(item => item.Id == product.Id)
+                    .Select(item => (int?)item.Version)
+                    .FirstOrDefaultAsync(cancellationToken);
+                Abandon();
+                return current is null
+                    ? CatalogResult<int>.NotFound()
+                    : CatalogResult<int>.Conflict("expectedVersion", CatalogSupport.StaleProductMessage, currentVersion: current);
+            }
+
+            var entry = database.Entry(product);
+            entry.Property(item => item.Version).CurrentValue = version.Value;
+            entry.Property(item => item.Version).OriginalValue = version.Value;
+            entry.Property(item => item.Version).IsModified = false;
+            product.UpdatedAt = now;
+            await SaveChangesAsync(cancellationToken);
+            if (ownsTransaction)
+            {
+                await transaction!.CommitAsync(cancellationToken);
+            }
+
+            return CatalogResult<int>.Ok(version.Value);
+        }
+        catch
+        {
+            if (ownsTransaction && transaction is not null)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+            }
+
+            throw;
+        }
+    }
+
     public async Task SaveChangesAsync(CancellationToken cancellationToken)
     {
         try
@@ -175,7 +234,7 @@ internal sealed class CatalogStore(CommerceDbContext database, TimeProvider time
         database.VariantOptionValues.AnyAsync(selection => selection.OptionValue.OptionId == optionId, cancellationToken);
 
     public Task<ProductOptionValue?> FindOptionValueAsync(Guid id, CancellationToken cancellationToken) =>
-        database.ProductOptionValues.FirstOrDefaultAsync(value => value.Id == id, cancellationToken);
+        database.ProductOptionValues.Include(value => value.Option).FirstOrDefaultAsync(value => value.Id == id, cancellationToken);
 
     public Task<bool> OptionValueIsUsedAsync(Guid optionValueId, CancellationToken cancellationToken) =>
         database.VariantOptionValues.AnyAsync(selection => selection.OptionValueId == optionValueId, cancellationToken);
@@ -321,6 +380,53 @@ internal sealed class CatalogStore(CommerceDbContext database, TimeProvider time
         }
 
         return await query.AnyAsync(cancellationToken);
+    }
+
+    private async Task<int?> AdvanceProductVersionAsync(
+        Guid productId,
+        int? expectedVersion,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        var connection = database.Database.GetDbConnection();
+        if (connection.State != ConnectionState.Open)
+        {
+            await connection.OpenAsync(cancellationToken);
+        }
+
+        await using var command = connection.CreateCommand();
+        command.Transaction = database.Database.CurrentTransaction?.GetDbTransaction();
+        command.CommandText = expectedVersion is null
+            ? """
+              UPDATE products
+              SET version = version + 1, updated_at = @now
+              WHERE id = @id
+              RETURNING version
+              """
+            : """
+              UPDATE products
+              SET version = version + 1, updated_at = @now
+              WHERE id = @id AND version = @expected
+              RETURNING version
+              """;
+        var id = command.CreateParameter();
+        id.ParameterName = "id";
+        id.Value = productId;
+        command.Parameters.Add(id);
+        var updatedAt = command.CreateParameter();
+        updatedAt.ParameterName = "now";
+        updatedAt.Value = now;
+        command.Parameters.Add(updatedAt);
+        if (expectedVersion is int expected)
+        {
+            var version = command.CreateParameter();
+            version.ParameterName = "expected";
+            version.Value = expected;
+            command.Parameters.Add(version);
+        }
+
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+        return result is null or DBNull ? null : Convert.ToInt32(result, System.Globalization.CultureInfo.InvariantCulture);
     }
 
     private static PostgresException? FindPostgres(Exception exception)

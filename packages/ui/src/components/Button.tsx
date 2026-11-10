@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes } from 'react';
+import { forwardRef, type ButtonHTMLAttributes } from 'react';
 import { cx } from '../lib/cx';
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost';
@@ -16,18 +16,22 @@ const variants: Record<ButtonVariant, string> = {
   ghost: 'bg-transparent hover:bg-surface disabled:text-muted-foreground',
 };
 
-export function Button({
-  variant = 'primary',
-  fullWidth = false,
-  loading = false,
-  className,
-  children,
-  disabled,
-  type = 'button',
-  ...rest
-}: ButtonProps) {
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  {
+    variant = 'primary',
+    fullWidth = false,
+    loading = false,
+    className,
+    children,
+    disabled,
+    type = 'button',
+    ...rest
+  },
+  ref,
+) {
   return (
     <button
+      ref={ref}
       type={type}
       aria-busy={loading || undefined}
       disabled={disabled || loading}
@@ -42,4 +46,4 @@ export function Button({
       {children}
     </button>
   );
-}
+});

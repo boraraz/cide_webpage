@@ -150,4 +150,55 @@ public sealed class CollectionService(ICatalogStore store, TimeProvider time)
         store.Remove(collection);
         return await CatalogSupport.SaveAsync(store, () => true, cancellationToken);
     }
+
+    public async Task<CatalogResult<bool>> AssignProductAsync(
+        Guid collectionId,
+        Guid productId,
+        CancellationToken cancellationToken,
+        int? expectedVersion = null)
+    {
+        var collection = await store.FindCollectionAsync(collectionId, cancellationToken);
+        var product = await store.FindProductGraphAsync(productId, cancellationToken);
+        if (collection is null || product is null)
+        {
+            return CatalogResult<bool>.NotFound();
+        }
+
+        if (product.Collections.All(link => link.CollectionId != collectionId))
+        {
+            var link = new ProductCollection
+            {
+                ProductId = product.Id,
+                CollectionId = collection.Id,
+                Product = product,
+                Collection = collection,
+            };
+            product.Collections.Add(link);
+            store.Add(link);
+        }
+
+        return await CatalogSupport.SaveProductAsync(store, product, expectedVersion, time.GetUtcNow(), () => true, cancellationToken);
+    }
+
+    public async Task<CatalogResult<bool>> RemoveProductAsync(
+        Guid collectionId,
+        Guid productId,
+        CancellationToken cancellationToken,
+        int? expectedVersion = null)
+    {
+        var product = await store.FindProductGraphAsync(productId, cancellationToken);
+        if (product is null || await store.FindCollectionAsync(collectionId, cancellationToken) is null)
+        {
+            return CatalogResult<bool>.NotFound();
+        }
+
+        var link = product.Collections.FirstOrDefault(item => item.CollectionId == collectionId);
+        if (link is not null)
+        {
+            product.Collections.Remove(link);
+            store.Remove(link);
+        }
+
+        return await CatalogSupport.SaveProductAsync(store, product, expectedVersion, time.GetUtcNow(), () => true, cancellationToken);
+    }
 }

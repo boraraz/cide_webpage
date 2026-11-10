@@ -74,7 +74,8 @@ public sealed class ProductService(ICatalogStore store, TimeProvider time)
         bool? isFeatured,
         IReadOnlyCollection<Guid>? categoryIds,
         IReadOnlyCollection<Guid>? collectionIds,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        int? expectedVersion = null)
     {
         var product = await store.FindProductGraphAsync(id, cancellationToken);
         if (product is null)
@@ -173,11 +174,11 @@ public sealed class ProductService(ICatalogStore store, TimeProvider time)
             return CatalogResult<ProductResponse>.Invalid(PublishRules.ForProduct(product));
         }
 
-        product.UpdatedAt = time.GetUtcNow();
-        return await CatalogSupport.SaveAsync(store, () => CatalogMapper.Product(product, includeStock: true), cancellationToken);
+        return await CatalogSupport.SaveProductAsync(
+            store, product, expectedVersion, time.GetUtcNow(), () => CatalogMapper.Product(product, includeStock: true), cancellationToken);
     }
 
-    public async Task<CatalogResult<ProductResponse>> PublishAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<CatalogResult<ProductResponse>> PublishAsync(Guid id, CancellationToken cancellationToken, int? expectedVersion = null)
     {
         var product = await store.FindProductGraphAsync(id, cancellationToken);
         if (product is null)
@@ -194,11 +195,11 @@ public sealed class ProductService(ICatalogStore store, TimeProvider time)
         var now = time.GetUtcNow();
         product.Status = ProductStatus.Active;
         product.PublishedAt ??= now;
-        product.UpdatedAt = now;
-        return await CatalogSupport.SaveAsync(store, () => CatalogMapper.Product(product, includeStock: true), cancellationToken);
+        return await CatalogSupport.SaveProductAsync(
+            store, product, expectedVersion, now, () => CatalogMapper.Product(product, includeStock: true), cancellationToken);
     }
 
-    public async Task<CatalogResult<ProductResponse>> ArchiveAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<CatalogResult<ProductResponse>> ArchiveAsync(Guid id, CancellationToken cancellationToken, int? expectedVersion = null)
     {
         var product = await store.FindProductGraphAsync(id, cancellationToken);
         if (product is null)
@@ -207,15 +208,16 @@ public sealed class ProductService(ICatalogStore store, TimeProvider time)
         }
 
         product.Status = ProductStatus.Archived;
-        product.UpdatedAt = time.GetUtcNow();
-        return await CatalogSupport.SaveAsync(store, () => CatalogMapper.Product(product, includeStock: true), cancellationToken);
+        return await CatalogSupport.SaveProductAsync(
+            store, product, expectedVersion, time.GetUtcNow(), () => CatalogMapper.Product(product, includeStock: true), cancellationToken);
     }
 
     public async Task<CatalogResult<OptionResponse>> AddOptionAsync(
         Guid productId,
         string? name,
         int position,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        int? expectedVersion = null)
     {
         var product = await store.FindProductGraphAsync(productId, cancellationToken);
         if (product is null)
@@ -256,15 +258,15 @@ public sealed class ProductService(ICatalogStore store, TimeProvider time)
         };
         product.Options.Add(option);
         store.Add(option);
-        var saved = await CatalogSupport.SaveAsync(store, () => MapOption(option), cancellationToken);
-        return saved;
+        return await CatalogSupport.SaveProductAsync(store, product, expectedVersion, time.GetUtcNow(), () => MapOption(option, product.Version), cancellationToken);
     }
 
     public async Task<CatalogResult<OptionResponse>> UpdateOptionAsync(
         Guid optionId,
         string? name,
         int? position,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        int? expectedVersion = null)
     {
         var option = await store.FindOptionAsync(optionId, cancellationToken);
         if (option is null)
@@ -297,10 +299,13 @@ public sealed class ProductService(ICatalogStore store, TimeProvider time)
             option.Position = order;
         }
 
-        return await CatalogSupport.SaveAsync(store, () => MapOption(option), cancellationToken);
+        var owner = await store.FindProductGraphAsync(option.ProductId, cancellationToken);
+        return owner is null
+            ? CatalogResult<OptionResponse>.NotFound()
+            : await CatalogSupport.SaveProductAsync(store, owner, expectedVersion, time.GetUtcNow(), () => MapOption(option, owner.Version), cancellationToken);
     }
 
-    public async Task<CatalogResult<bool>> DeleteOptionAsync(Guid optionId, CancellationToken cancellationToken)
+    public async Task<CatalogResult<bool>> DeleteOptionAsync(Guid optionId, CancellationToken cancellationToken, int? expectedVersion = null)
     {
         var option = await store.FindOptionAsync(optionId, cancellationToken);
         if (option is null)
@@ -313,8 +318,14 @@ public sealed class ProductService(ICatalogStore store, TimeProvider time)
             return CatalogResult<bool>.Conflict("option", "Remove the variants that use this option first.");
         }
 
+        var owner = await store.FindProductGraphAsync(option.ProductId, cancellationToken);
+        if (owner is null)
+        {
+            return CatalogResult<bool>.NotFound();
+        }
+
         store.Remove(option);
-        return await CatalogSupport.SaveAsync(store, () => true, cancellationToken);
+        return await CatalogSupport.SaveProductAsync(store, owner, expectedVersion, time.GetUtcNow(), () => true, cancellationToken);
     }
 
     public async Task<CatalogResult<OptionValueResponse>> AddOptionValueAsync(
@@ -322,7 +333,8 @@ public sealed class ProductService(ICatalogStore store, TimeProvider time)
         string? value,
         string? code,
         int position,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        int? expectedVersion = null)
     {
         var option = await store.FindOptionAsync(optionId, cancellationToken);
         if (option is null)
@@ -364,13 +376,19 @@ public sealed class ProductService(ICatalogStore store, TimeProvider time)
         };
         option.Values.Add(optionValue);
         store.Add(optionValue);
-        return await CatalogSupport.SaveAsync(
-            store,
-            () => new OptionValueResponse(optionValue.Id, optionValue.Value, optionValue.Code, optionValue.Position),
-            cancellationToken);
+        var owner = await store.FindProductGraphAsync(option.ProductId, cancellationToken);
+        return owner is null
+            ? CatalogResult<OptionValueResponse>.NotFound()
+            : await CatalogSupport.SaveProductAsync(
+                store,
+                owner,
+                expectedVersion,
+                time.GetUtcNow(),
+                () => new OptionValueResponse(optionValue.Id, optionValue.Value, optionValue.Code, optionValue.Position),
+                cancellationToken);
     }
 
-    public async Task<CatalogResult<bool>> DeleteOptionValueAsync(Guid optionValueId, CancellationToken cancellationToken)
+    public async Task<CatalogResult<bool>> DeleteOptionValueAsync(Guid optionValueId, CancellationToken cancellationToken, int? expectedVersion = null)
     {
         var optionValue = await store.FindOptionValueAsync(optionValueId, cancellationToken);
         if (optionValue is null)
@@ -383,8 +401,14 @@ public sealed class ProductService(ICatalogStore store, TimeProvider time)
             return CatalogResult<bool>.Conflict("optionValue", "Remove the variants that use this value first.");
         }
 
+        var owner = await store.FindProductGraphAsync(optionValue.Option.ProductId, cancellationToken);
+        if (owner is null)
+        {
+            return CatalogResult<bool>.NotFound();
+        }
+
         store.Remove(optionValue);
-        return await CatalogSupport.SaveAsync(store, () => true, cancellationToken);
+        return await CatalogSupport.SaveProductAsync(store, owner, expectedVersion, time.GetUtcNow(), () => true, cancellationToken);
     }
 
     public async Task<CatalogResult<VariantResponse>> AddVariantAsync(
@@ -397,7 +421,8 @@ public sealed class ProductService(ICatalogStore store, TimeProvider time)
         IReadOnlyCollection<Guid> optionValueIds,
         int initialQuantity,
         Guid actorUserId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        int? expectedVersion = null)
     {
         var product = await store.FindProductGraphAsync(productId, cancellationToken);
         if (product is null)
@@ -478,7 +503,7 @@ public sealed class ProductService(ICatalogStore store, TimeProvider time)
             });
         }
 
-        return await CatalogSupport.SaveAsync(store, () => MapVariant(variant), cancellationToken);
+        return await CatalogSupport.SaveProductAsync(store, product, expectedVersion, now, () => MapVariant(variant, product.Version), cancellationToken);
     }
 
     public async Task<CatalogResult<VariantResponse>> UpdateVariantAsync(
@@ -490,7 +515,8 @@ public sealed class ProductService(ICatalogStore store, TimeProvider time)
         bool compareAtSpecified,
         bool? isActive,
         IReadOnlyCollection<Guid>? optionValueIds,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        int? expectedVersion = null)
     {
         var variant = await store.FindVariantGraphAsync(variantId, cancellationToken);
         if (variant is null)
@@ -562,10 +588,10 @@ public sealed class ProductService(ICatalogStore store, TimeProvider time)
             }
         }
 
-        return await CatalogSupport.SaveAsync(store, () => MapVariant(variant), cancellationToken);
+        return await CatalogSupport.SaveProductAsync(store, product, expectedVersion, time.GetUtcNow(), () => MapVariant(variant, product.Version), cancellationToken);
     }
 
-    public async Task<CatalogResult<bool>> DeleteVariantAsync(Guid variantId, CancellationToken cancellationToken)
+    public async Task<CatalogResult<bool>> DeleteVariantAsync(Guid variantId, CancellationToken cancellationToken, int? expectedVersion = null)
     {
         var variant = await store.FindVariantGraphAsync(variantId, cancellationToken);
         if (variant is null)
@@ -583,8 +609,115 @@ public sealed class ProductService(ICatalogStore store, TimeProvider time)
             return CatalogResult<bool>.Conflict("variant", "Variants with inventory history cannot be deleted.");
         }
 
+        var owner = variant.Product;
         store.Remove(variant);
-        return await CatalogSupport.SaveAsync(store, () => true, cancellationToken);
+        return await CatalogSupport.SaveProductAsync(store, owner, expectedVersion, time.GetUtcNow(), () => true, cancellationToken);
+    }
+
+    public async Task<CatalogResult<IReadOnlyList<VariantResponse>>> AddVariantsAsync(
+        Guid productId,
+        IReadOnlyList<NewVariant> variants,
+        Guid actorUserId,
+        CancellationToken cancellationToken,
+        int? expectedVersion = null)
+    {
+        if (variants.Count is 0 or > 100)
+        {
+            return CatalogResult<IReadOnlyList<VariantResponse>>.Invalid(Field("variants", "Send from 1 to 100 variants."));
+        }
+
+        var product = await store.FindProductGraphAsync(productId, cancellationToken);
+        if (product is null)
+        {
+            return CatalogResult<IReadOnlyList<VariantResponse>>.NotFound();
+        }
+
+        var now = time.GetUtcNow();
+        var created = new List<ProductVariant>();
+        foreach (var draft in variants)
+        {
+            var prepared = await PrepareVariantAsync(product, null, draft.Sku, draft.Barcode, draft.Price, draft.CompareAtPrice, draft.OptionValueIds, cancellationToken);
+            if (prepared.Failure is not null)
+            {
+                store.Abandon();
+                return CatalogResult<IReadOnlyList<VariantResponse>>.Fail(prepared.Failure);
+            }
+
+            if (draft.InitialQuantity < 0)
+            {
+                store.Abandon();
+                return CatalogResult<IReadOnlyList<VariantResponse>>.Invalid(Field("initialQuantity", "Stock cannot be negative."));
+            }
+
+            var variant = new ProductVariant
+            {
+                Id = Guid.CreateVersion7(),
+                ProductId = product.Id,
+                Product = product,
+                Sku = prepared.Sku!,
+                Barcode = prepared.Barcode,
+                Price = draft.Price,
+                CompareAtPrice = draft.CompareAtPrice,
+                CurrencyCode = Money.Currency,
+                IsActive = draft.IsActive,
+                CombinationKey = prepared.CombinationKey!,
+                CreatedAt = now,
+                UpdatedAt = now,
+                Balance = new InventoryBalance { OnHand = draft.InitialQuantity, Reserved = 0 },
+            };
+            variant.Balance.VariantId = variant.Id;
+            variant.Balance.Variant = variant;
+            foreach (var optionValue in prepared.Values)
+            {
+                variant.Selections.Add(new VariantOptionValue
+                {
+                    VariantId = variant.Id,
+                    Variant = variant,
+                    OptionValueId = optionValue.Id,
+                    OptionValue = optionValue,
+                });
+            }
+
+            product.Variants.Add(variant);
+            store.Add(variant);
+            if (draft.InitialQuantity > 0)
+            {
+                store.Add(new InventoryMovement
+                {
+                    Id = Guid.CreateVersion7(),
+                    VariantId = variant.Id,
+                    Variant = variant,
+                    MovementType = InventoryMovementType.InitialStock,
+                    QuantityDelta = draft.InitialQuantity,
+                    OnHandAfter = draft.InitialQuantity,
+                    ReservedAfter = 0,
+                    ActorUserId = actorUserId,
+                    IdempotencyKey = $"initial-{variant.Id:N}",
+                    RequestHash = CatalogSupport.HashAdjustment(InventoryMovementType.InitialStock, draft.InitialQuantity, null),
+                    CreatedAt = now,
+                });
+            }
+
+            created.Add(variant);
+        }
+
+        if (product.Status == ProductStatus.Active)
+        {
+            var errors = PublishRules.ForProduct(product);
+            if (errors.Count > 0)
+            {
+                store.Abandon();
+                return CatalogResult<IReadOnlyList<VariantResponse>>.Invalid(errors);
+            }
+        }
+
+        return await CatalogSupport.SaveProductAsync(
+            store,
+            product,
+            expectedVersion,
+            now,
+            () => (IReadOnlyList<VariantResponse>)created.Select(variant => MapVariant(variant, product.Version)).ToArray(),
+            cancellationToken);
     }
 
     private async Task<bool> KeepPublishedStateAsync(Product product)
@@ -737,16 +870,17 @@ public sealed class ProductService(ICatalogStore store, TimeProvider time)
     private static Dictionary<string, string[]> Field(string key, string message) =>
         new() { [key] = [message] };
 
-    private static OptionResponse MapOption(ProductOption option) => new(
+    private static OptionResponse MapOption(ProductOption option, int productVersion) => new(
         option.Id,
         option.Name,
         option.Position,
         option.Values
             .OrderBy(value => value.Position)
             .Select(value => new OptionValueResponse(value.Id, value.Value, value.Code, value.Position))
-            .ToArray());
+            .ToArray(),
+        productVersion);
 
-    private static VariantResponse MapVariant(ProductVariant variant) => new(
+    private static VariantResponse MapVariant(ProductVariant variant, int productVersion) => new(
         variant.Id,
         variant.Sku,
         variant.Barcode,
@@ -757,9 +891,10 @@ public sealed class ProductService(ICatalogStore store, TimeProvider time)
         variant.Balance?.OnHand ?? 0,
         variant.Balance?.Reserved ?? 0,
         variant.Balance?.Available ?? 0,
-        variant.Selections
+            variant.Selections
             .Select(selection => new SelectedOptionResponse(selection.OptionValue.Option.Name, selection.OptionValue.Value, selection.OptionValue.Code))
-            .ToArray());
+            .ToArray(),
+        productVersion);
 
     private sealed record PreparedVariant(
         string? Sku,

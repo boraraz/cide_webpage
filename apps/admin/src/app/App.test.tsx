@@ -74,7 +74,15 @@ describe('admin shell', () => {
       expect(within(nav).getByText(item.label)).toBeInTheDocument();
     }
     const links = within(nav).getAllByRole('link');
-    expect(links.map((link) => link.textContent)).toEqual(['Dashboard']);
+    expect(links.map((link) => link.textContent)).toEqual([
+      'Dashboard',
+      'Products',
+      'Categories',
+      'Collections',
+      'Stock',
+      'Movements',
+      'Homepage',
+    ]);
   });
 
   it('shows dependency readiness reported by the API, including 503 reports', async () => {
@@ -98,7 +106,7 @@ describe('admin shell', () => {
   });
 
   it('renders the not-found page for unknown routes', async () => {
-    renderAt('/products');
+    renderAt('/does-not-exist');
 
     expect(await screen.findByRole('heading', { name: 'Page not found' })).toBeInTheDocument();
   });

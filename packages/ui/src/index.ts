@@ -1,4 +1,8 @@
 export { Button, type ButtonProps } from './components/Button';
+export { Checkbox, type CheckboxProps } from './components/Checkbox';
+export { Dialog, type DialogProps } from './components/Dialog';
+export { Select, type SelectProps } from './components/Select';
+export { Textarea, type TextareaProps } from './components/Textarea';
 export { Container, type ContainerProps } from './components/Container';
 export { Drawer, type DrawerProps } from './components/Drawer';
 export { SkipLink, type SkipLinkProps } from './components/SkipLink';

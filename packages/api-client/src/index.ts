@@ -6,11 +6,20 @@ export {
   productListQuery,
   type AdminProductQuery,
   type CatalogApi,
+  type DashboardSummary,
   type InventoryQuery,
+  type MovementHistoryQuery,
+  type VariantBulkItem,
   type MediaUpload,
   type ProductListQuery,
   type ProductSort,
 } from './catalog';
+export {
+  createContentApi,
+  type ContentApi,
+  type HomepageBlock,
+  type HomepageDraft,
+} from './content';
 export { createCsrfMemory, type CsrfMemory } from './csrf';
 export {
   createApiClient,

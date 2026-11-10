@@ -11,7 +11,8 @@ public sealed record CatalogFailure(
     int Status,
     string Title,
     string? Detail = null,
-    IReadOnlyDictionary<string, string[]>? Errors = null);
+    IReadOnlyDictionary<string, string[]>? Errors = null,
+    int? CurrentVersion = null);
 
 public sealed record CatalogResult<T>(T? Value, CatalogFailure? Failure)
 {
@@ -27,6 +28,10 @@ public sealed record CatalogResult<T>(T? Value, CatalogFailure? Failure)
     public static CatalogResult<T> NotFound() =>
         Fail(new CatalogFailure(404, "The resource was not found."));
 
-    public static CatalogResult<T> Conflict(string field, string message, int status = 409) =>
-        Fail(new CatalogFailure(status, message, Errors: new Dictionary<string, string[]> { [field] = [message] }));
+    public static CatalogResult<T> Conflict(string field, string message, int status = 409, int? currentVersion = null) =>
+        Fail(new CatalogFailure(
+            status,
+            message,
+            Errors: new Dictionary<string, string[]> { [field] = [message] },
+            CurrentVersion: currentVersion));
 }

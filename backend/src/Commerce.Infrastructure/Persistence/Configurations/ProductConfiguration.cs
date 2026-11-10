@@ -21,6 +21,7 @@ internal sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
                 value => Enum.Parse<ProductStatus>(value, true))
             .HasMaxLength(16)
             .IsRequired();
+        builder.Property(product => product.Version).IsRequired().HasDefaultValue(1);
         builder.HasIndex(product => product.Slug).IsUnique();
         builder.HasIndex(product => new { product.Status, product.PublishedAt });
 

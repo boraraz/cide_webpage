@@ -11,6 +11,8 @@ public interface ICatalogStore
 {
     Task SaveChangesAsync(CancellationToken cancellationToken);
 
+    Task<CatalogResult<int>> SaveProductGraphAsync(Product product, int? expectedVersion, DateTimeOffset now, CancellationToken cancellationToken);
+
     Task<ICatalogTransaction> BeginTransactionAsync(CancellationToken cancellationToken);
 
     void Abandon();

@@ -28,16 +28,30 @@ public sealed class CatalogUpgradeTests
                 """);
         }
 
+        var productId = Guid.CreateVersion7();
         await using (var database = new CommerceDbContext(options))
         {
-            await database.Database.MigrateAsync();
+            await database.Database.MigrateAsync("20261108105857_Catalog");
+            await database.Database.ExecuteSqlInterpolatedAsync($"""
+                INSERT INTO products (
+                    id, name, slug, description, short_description, status, is_featured, created_at, updated_at)
+                VALUES (
+                    {productId}, {"Training tee"}, {"training-tee"}, {"A training tee."}, {"Training tee"}, {"active"}, {false}, {DateTimeOffset.UtcNow}, {DateTimeOffset.UtcNow})
+                """);
+        }
+
+        await using (var database = new CommerceDbContext(options))
+        {
+            await database.Database.MigrateAsync("20261110145907_AdminContent");
             var email = await database.Database.SqlQuery<string>(
                 $"SELECT email AS \"Value\" FROM users WHERE id = {userId}").SingleAsync();
             Assert.Equal("phase2@example.com", email);
-            var tables = await database.Database.SqlQuery<string>(
-                $"""SELECT table_name AS "Value" FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'products'""")
-                .ToListAsync();
-            Assert.Contains("products", tables);
+            var version = await database.Database.SqlQuery<int>(
+                $"SELECT version AS \"Value\" FROM products WHERE id = {productId}").SingleAsync();
+            Assert.Equal(1, version);
+            var name = await database.Database.SqlQuery<string>(
+                $"SELECT name AS \"Value\" FROM products WHERE id = {productId}").SingleAsync();
+            Assert.Equal("Training tee", name);
         }
     }
 }

@@ -1,4 +1,5 @@
 using Commerce.Domain.Catalog;
+using Commerce.Domain.Content;
 using Commerce.Domain.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -49,6 +50,14 @@ public sealed class CommerceDbContext(DbContextOptions<CommerceDbContext> option
     public DbSet<ProductMedia> ProductMedia => Set<ProductMedia>();
 
     public DbSet<SlugHistory> SlugHistories => Set<SlugHistory>();
+
+    public DbSet<ContentPage> ContentPages => Set<ContentPage>();
+
+    public DbSet<ContentRevision> ContentRevisions => Set<ContentRevision>();
+
+    public DbSet<ContentMedia> ContentMedia => Set<ContentMedia>();
+
+    public DbSet<ContentRevisionMedia> ContentRevisionMedia => Set<ContentRevisionMedia>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

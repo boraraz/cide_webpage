@@ -6,6 +6,30 @@ namespace Commerce.Application.Catalog;
 
 public static class CatalogSupport
 {
+    public const string StaleProductMessage = "This product was saved in another session. Reload to see the latest version.";
+
+    public static async Task<CatalogResult<T>> SaveProductAsync<T>(
+        ICatalogStore store,
+        Product product,
+        int? expectedVersion,
+        DateTimeOffset now,
+        Func<T> value,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var saved = await store.SaveProductGraphAsync(product, expectedVersion, now, cancellationToken);
+            return saved.Succeeded
+                ? CatalogResult<T>.Ok(value())
+                : CatalogResult<T>.Fail(saved.Failure!);
+        }
+        catch (CatalogConflictException conflict)
+        {
+            store.Abandon();
+            return CatalogResult<T>.Conflict(conflict.Field, conflict.Message, conflict.Status);
+        }
+    }
+
     public static async Task<CatalogResult<T>> SaveAsync<T>(
         ICatalogStore store,
         Func<T> value,

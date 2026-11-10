@@ -24,5 +24,9 @@ public sealed class ProductMedia
 
     public long FileSize { get; set; }
 
+    public int? Width { get; set; }
+
+    public int? Height { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
 }

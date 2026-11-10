@@ -58,7 +58,7 @@ public static class PublicCatalogEndpoints
                 var stored = await media.OpenPublicAsync(id, cancellationToken);
                 return stored is null
                     ? Results.NotFound()
-                    : Results.File(stored.Content, stored.ContentType);
+                    : MediaHttp.File(stored, published: true);
             })
             .WithName("GetPublicMedia");
 

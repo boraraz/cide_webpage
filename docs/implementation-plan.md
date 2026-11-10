@@ -180,6 +180,38 @@ not part of this phase. Admin catalog navigation stays disabled.
 Cart, checkout, coupons, a tax engine, reservations, payments, reviews, Redis, Elasticsearch, and
 admin or storefront catalog screens.
 
+## Phase 4: Admin catalog and homepage CMS (complete)
+
+The admin can manage categories, collections, products, variants, stock and the homepage. The
+customer storefront still does not render the catalogue or the homepage.
+
+### Delivered
+
+- Dashboard counts, product search, product editing, variant generation, inventory, movement
+  history, and image upload through the existing private bucket.
+- `products.version` increments in the same transaction as merchandising changes. A matching
+  `expectedVersion` is an atomic compare-and-swap. Omitting it remains last-write-wins. Stock
+  adjustments do not change the product version.
+- Homepage revisions are insert-only. PostgreSQL triggers reject updates and deletes.
+  `content_pages` is the only place that stores the draft pointer, published pointer and
+  `published_at`. Public media is visible only when the published revision still references it.
+- Public homepage and public media responses are proxied by the API. Phase 4 serves the original
+  image. Derivative widths are specified for Phase 5 and are not generated.
+
+### Accepted limits
+
+- Omitting `expectedVersion` is last-write-wins. Stock adjustments do not take a product version.
+- Phase 4 serves original images only. Existing product images keep null dimensions until re-upload.
+- Movement history derives the previous on-hand quantity. It is not stored.
+- Sample seed images have no bytes.
+- Orders, reviews, settings and the media library stay disabled.
+- The customer storefront does not render the homepage.
+
+### Not in this phase
+
+Customer listing and product pages, cart, checkout, orders, payments, shipping, wishlist, reviews,
+promotions, analytics, a multi-page CMS, multi-language, multi-currency, Redis and Elasticsearch.
+
 ## Later prerequisites
 
 1. **Production configuration.**

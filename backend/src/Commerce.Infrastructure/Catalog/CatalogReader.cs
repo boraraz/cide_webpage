@@ -7,7 +7,7 @@ using NpgsqlTypes;
 
 namespace Commerce.Infrastructure.Catalog;
 
-internal sealed class CatalogReader(CommerceDbContext database) : ICatalogReader
+internal sealed class CatalogReader(CommerceDbContext database, Microsoft.Extensions.Options.IOptions<CatalogOptions> options) : ICatalogReader
 {
     public async Task<IReadOnlyList<CategoryNode>> CategoryTreeAsync(bool activeOnly, CancellationToken cancellationToken)
     {
@@ -219,7 +219,8 @@ internal sealed class CatalogReader(CommerceDbContext database) : ICatalogReader
                 option.Id,
                 option.Name,
                 option.Position,
-                option.Values.OrderBy(value => value.Position).Select(value => new OptionValueResponse(value.Id, value.Value, value.Code, value.Position)).ToArray())).ToArray(),
+                option.Values.OrderBy(value => value.Position).Select(value => new OptionValueResponse(value.Id, value.Value, value.Code, value.Position)).ToArray(),
+                product.Version)).ToArray(),
             activeVariants.OrderBy(variant => variant.Sku).Select(variant => new PublicVariantResponse(
                 variant.Id,
                 variant.Sku,
@@ -231,15 +232,7 @@ internal sealed class CatalogReader(CommerceDbContext database) : ICatalogReader
                 variant.Selections.OrderBy(selection => selection.OptionValue.Option.Position)
                     .Select(selection => new SelectedOptionResponse(selection.OptionValue.Option.Name, selection.OptionValue.Value, selection.OptionValue.Code))
                     .ToArray())).ToArray(),
-            product.Media.OrderBy(media => media.DisplayOrder).Select(media => new MediaResponse(
-                media.Id,
-                media.VariantId,
-                media.AltText,
-                media.DisplayOrder,
-                media.IsPrimary,
-                media.ContentType,
-                media.FileSize,
-                CatalogMapper.MediaPath(media.Id))).ToArray());
+            product.Media.OrderBy(media => media.DisplayOrder).Select(CatalogMapper.Media).ToArray());
     }
 
     public async Task<MediaResponse?> PublicMediaAsync(Guid id, CancellationToken cancellationToken)
@@ -253,20 +246,69 @@ internal sealed class CatalogReader(CommerceDbContext database) : ICatalogReader
             return null;
         }
 
-        return new MediaResponse(media.Id, media.VariantId, media.AltText, media.DisplayOrder, media.IsPrimary, media.ContentType, media.FileSize, CatalogMapper.MediaPath(media.Id));
+        return CatalogMapper.Media(media);
     }
 
-    public async Task<AdminProductPage> AdminProductsAsync(int page, int pageSize, string? status, CancellationToken cancellationToken)
+    public async Task<DashboardSummary> DashboardAsync(CancellationToken cancellationToken)
+    {
+        var threshold = Math.Max(0, options.Value.LowStockThreshold);
+        var products = await database.Products.AsNoTracking()
+            .GroupBy(_ => 1)
+            .Select(group => new
+            {
+                Total = group.Count(),
+                Published = group.Count(product => product.Status == ProductStatus.Active),
+                Drafts = group.Count(product => product.Status == ProductStatus.Draft),
+                Archived = group.Count(product => product.Status == ProductStatus.Archived),
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+        var activeVariants = database.ProductVariants.AsNoTracking().Where(variant => variant.IsActive && variant.Balance != null);
+        return new DashboardSummary(
+            products?.Total ?? 0,
+            products?.Published ?? 0,
+            products?.Drafts ?? 0,
+            products?.Archived ?? 0,
+            await activeVariants.CountAsync(cancellationToken),
+            await activeVariants.CountAsync(variant => variant.Balance!.OnHand - variant.Balance.Reserved <= 0, cancellationToken),
+            await activeVariants.CountAsync(
+                variant => variant.Balance!.OnHand - variant.Balance.Reserved > 0
+                    && variant.Balance.OnHand - variant.Balance.Reserved <= threshold,
+                cancellationToken),
+            await database.Categories.CountAsync(cancellationToken),
+            await database.Collections.CountAsync(cancellationToken),
+            threshold);
+    }
+
+    public async Task<AdminProductPage> AdminProductsAsync(AdminProductQuery query, CancellationToken cancellationToken)
     {
         var products = database.Products.AsNoTracking();
-        if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse<ProductStatus>(status, true, out var parsed))
+        if (!string.IsNullOrWhiteSpace(query.Status) && Enum.TryParse<ProductStatus>(query.Status, true, out var parsed))
         {
             products = products.Where(product => product.Status == parsed);
         }
 
-        var ordered = products.OrderByDescending(product => product.UpdatedAt).ThenBy(product => product.Id);
+        if (query.CategoryId is Guid categoryId)
+        {
+            products = products.Where(product => product.Categories.Any(link => link.CategoryId == categoryId));
+        }
+
+        if (query.CollectionId is Guid collectionId)
+        {
+            products = products.Where(product => product.Collections.Any(link => link.CollectionId == collectionId));
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.Search) && query.Search.Trim().Length >= 2)
+        {
+            var term = query.Search.Trim();
+            products = products.Where(product =>
+                EF.Property<NpgsqlTsVector>(product, "SearchVector").Matches(EF.Functions.PlainToTsQuery("turkish", term)));
+        }
+
+        var ordered = query.Sort == "name"
+            ? products.OrderBy(product => product.Name).ThenBy(product => product.Id)
+            : products.OrderByDescending(product => product.UpdatedAt).ThenBy(product => product.Id);
         var total = await ordered.CountAsync(cancellationToken);
-        var rows = await ordered.Skip((page - 1) * pageSize).Take(pageSize)
+        var rows = await ordered.Skip((query.Page - 1) * query.PageSize).Take(query.PageSize)
             .Select(product => new
             {
                 product.Id,
@@ -274,8 +316,16 @@ internal sealed class CatalogReader(CommerceDbContext database) : ICatalogReader
                 product.Slug,
                 product.Status,
                 product.IsFeatured,
-                VariantCount = product.Variants.Count(),
+                product.Version,
                 product.UpdatedAt,
+                VariantCount = product.Variants.Count(),
+                PrimaryMediaId = product.Media.Where(media => media.IsPrimary).Select(media => (Guid?)media.Id).FirstOrDefault(),
+                FirstSku = product.Variants.OrderBy(variant => variant.Sku).Select(variant => variant.Sku).FirstOrDefault(),
+                CategoryName = product.Categories.OrderBy(link => link.Category.Name).Select(link => link.Category.Name).FirstOrDefault(),
+                MinPrice = product.Variants.Where(variant => variant.IsActive).Min(variant => (decimal?)variant.Price),
+                MaxPrice = product.Variants.Where(variant => variant.IsActive).Max(variant => (decimal?)variant.Price),
+                OnHand = product.Variants.Sum(variant => (int?)variant.Balance!.OnHand) ?? 0,
+                Available = product.Variants.Sum(variant => (int?)(variant.Balance!.OnHand - variant.Balance.Reserved)) ?? 0,
             })
             .ToListAsync(cancellationToken);
         return new AdminProductPage(
@@ -286,9 +336,23 @@ internal sealed class CatalogReader(CommerceDbContext database) : ICatalogReader
                 row.Status.ToString().ToLowerInvariant(),
                 row.IsFeatured,
                 row.VariantCount,
-                row.UpdatedAt)).ToArray(),
-            page,
-            pageSize,
+                row.UpdatedAt,
+                row.Version,
+                row.PrimaryMediaId,
+                row.VariantCount switch
+                {
+                    0 => null,
+                    1 => row.FirstSku,
+                    _ => $"{row.FirstSku} +{row.VariantCount - 1}",
+                },
+                row.CategoryName,
+                row.MinPrice is decimal min ? Money.Format(min) : null,
+                row.MaxPrice is decimal max ? Money.Format(max) : null,
+                Money.Currency,
+                row.OnHand,
+                row.Available)).ToArray(),
+            query.Page,
+            query.PageSize,
             total);
     }
 
@@ -298,28 +362,56 @@ internal sealed class CatalogReader(CommerceDbContext database) : ICatalogReader
         return product is null ? null : CatalogMapper.Product(product, includeStock: true);
     }
 
-    public async Task<InventoryPage> InventoryAsync(int page, int pageSize, string? sku, CancellationToken cancellationToken)
+    public async Task<InventoryPage> InventoryAsync(AdminInventoryQuery query, CancellationToken cancellationToken)
     {
+        var threshold = Math.Max(0, options.Value.LowStockThreshold);
         var variants = database.ProductVariants.AsNoTracking().Where(variant => variant.Balance != null);
-        if (!string.IsNullOrWhiteSpace(sku))
+        if (!string.IsNullOrWhiteSpace(query.Search))
         {
-            var normalized = Sku.Normalize(sku) ?? sku.Trim().ToUpperInvariant();
-            variants = variants.Where(variant => variant.Sku.Contains(normalized));
+            var term = query.Search.Trim();
+            var normalized = Sku.Normalize(term) ?? term.ToUpperInvariant();
+            variants = variants.Where(variant => variant.Sku.Contains(normalized) || variant.Product.Name.ToLower().Contains(term.ToLower()));
         }
+
+        variants = query.Stock switch
+        {
+            "out" => variants.Where(variant => variant.Balance!.OnHand - variant.Balance.Reserved <= 0),
+            "low" => variants.Where(variant => variant.Balance!.OnHand - variant.Balance.Reserved > 0
+                && variant.Balance.OnHand - variant.Balance.Reserved <= threshold),
+            "in_stock" => variants.Where(variant => variant.Balance!.OnHand - variant.Balance.Reserved > threshold),
+            _ => variants,
+        };
 
         var ordered = variants.OrderBy(variant => variant.Sku).ThenBy(variant => variant.Id);
         var total = await ordered.CountAsync(cancellationToken);
-        var rows = await ordered.Skip((page - 1) * pageSize).Take(pageSize)
-            .Select(variant => new InventoryRow(
+        var rows = await ordered.Skip((query.Page - 1) * query.PageSize).Take(query.PageSize)
+            .Select(variant => new
+            {
                 variant.Id,
                 variant.Sku,
                 variant.ProductId,
-                variant.Product.Name,
-                variant.Balance!.OnHand,
-                variant.Balance.Reserved,
-                variant.Balance.OnHand - variant.Balance.Reserved))
+                ProductName = variant.Product.Name,
+                OnHand = variant.Balance!.OnHand,
+                Reserved = variant.Balance.Reserved,
+                Options = variant.Selections
+                    .OrderBy(selection => selection.OptionValue.Option.Position)
+                    .Select(selection => selection.OptionValue.Value)
+                    .ToList(),
+            })
             .ToListAsync(cancellationToken);
-        return new InventoryPage(rows, page, pageSize, total);
+        return new InventoryPage(
+            rows.Select(row => new InventoryRow(
+                row.Id,
+                row.Sku,
+                row.ProductId,
+                row.ProductName,
+                row.OnHand,
+                row.Reserved,
+                row.OnHand - row.Reserved,
+                string.Join(" / ", row.Options))).ToArray(),
+            query.Page,
+            query.PageSize,
+            total);
     }
 
     public async Task<IReadOnlyList<MovementResponse>?> MovementsAsync(Guid variantId, CancellationToken cancellationToken)
@@ -339,12 +431,71 @@ internal sealed class CatalogReader(CommerceDbContext database) : ICatalogReader
         return rows.Select(CatalogMapper.Movement).ToArray();
     }
 
+    public async Task<MovementPage> MovementHistoryAsync(MovementHistoryQuery query, CancellationToken cancellationToken)
+    {
+        var movements = database.InventoryMovements.AsNoTracking();
+        if (query.VariantId is Guid variantId)
+        {
+            movements = movements.Where(movement => movement.VariantId == variantId);
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.Sku))
+        {
+            var normalized = Sku.Normalize(query.Sku) ?? query.Sku.Trim().ToUpperInvariant();
+            movements = movements.Where(movement => movement.Variant.Sku.Contains(normalized));
+        }
+
+        var ordered = movements.OrderByDescending(movement => movement.CreatedAt).ThenByDescending(movement => movement.Id);
+        var total = await ordered.CountAsync(cancellationToken);
+        var rows = await ordered.Skip((query.Page - 1) * query.PageSize).Take(query.PageSize)
+            .Select(movement => new
+            {
+                movement.Id,
+                movement.VariantId,
+                movement.Variant.ProductId,
+                ProductName = movement.Variant.Product.Name,
+                movement.Variant.Sku,
+                movement.MovementType,
+                movement.QuantityDelta,
+                movement.OnHandAfter,
+                movement.ReservedAfter,
+                movement.Note,
+                movement.ActorUserId,
+                ActorEmail = database.Users.Where(user => user.Id == movement.ActorUserId).Select(user => user.Email).FirstOrDefault(),
+                movement.IdempotencyKey,
+                movement.CreatedAt,
+                Options = movement.Variant.Selections
+                    .OrderBy(selection => selection.OptionValue.Option.Position)
+                    .Select(selection => selection.OptionValue.Value)
+                    .ToList(),
+            })
+            .ToListAsync(cancellationToken);
+        return new MovementPage(
+            rows.Select(row => new MovementListItem(
+                row.Id,
+                row.VariantId,
+                row.ProductId,
+                row.ProductName,
+                row.Sku,
+                string.Join(" / ", row.Options),
+                row.MovementType.ToString().ToLowerInvariant(),
+                row.QuantityDelta,
+                row.OnHandAfter,
+                row.ReservedAfter,
+                row.Note,
+                row.ActorUserId,
+                row.ActorEmail,
+                row.IdempotencyKey,
+                row.CreatedAt)).ToArray(),
+            query.Page,
+            query.PageSize,
+            total);
+    }
+
     public async Task<MediaResponse?> AdminMediaAsync(Guid id, CancellationToken cancellationToken)
     {
         var media = await database.ProductMedia.AsNoTracking().FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
-        return media is null
-            ? null
-            : new MediaResponse(media.Id, media.VariantId, media.AltText, media.DisplayOrder, media.IsPrimary, media.ContentType, media.FileSize, CatalogMapper.MediaPath(media.Id));
+        return media is null ? null : CatalogMapper.Media(media);
     }
 
     private IQueryable<Category> Categories(bool activeOnly)

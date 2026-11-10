@@ -21,7 +21,7 @@ export function SidebarNav({
               {item.status === 'available' ? (
                 <NavLink
                   to={item.to}
-                  end
+                  end={item.to === '/'}
                   onClick={onNavigate}
                   className={({ isActive }) =>
                     cx(

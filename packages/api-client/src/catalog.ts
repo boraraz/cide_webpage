@@ -50,12 +50,48 @@ export interface AdminProductQuery {
   page?: number;
   pageSize?: number;
   status?: string;
+  q?: string;
+  categoryId?: string;
+  collectionId?: string;
+  sort?: 'updated' | 'name';
 }
 
 export interface InventoryQuery {
   page?: number;
   pageSize?: number;
   sku?: string;
+  q?: string;
+  stock?: 'all' | 'in_stock' | 'low' | 'out';
+}
+
+export interface MovementHistoryQuery {
+  page?: number;
+  pageSize?: number;
+  sku?: string;
+  variantId?: string;
+}
+
+export interface DashboardSummary {
+  totalProducts: number;
+  publishedProducts: number;
+  draftProducts: number;
+  archivedProducts: number;
+  activeVariants: number;
+  outOfStockVariants: number;
+  lowStockVariants: number;
+  categories: number;
+  collections: number;
+  lowStockThreshold: number;
+}
+
+export interface VariantBulkItem {
+  sku?: string;
+  barcode?: string;
+  price: string;
+  compareAtPrice?: string;
+  isActive?: boolean;
+  optionValueIds: string[];
+  initialQuantity: number;
 }
 
 export interface MediaUpload {
@@ -72,6 +108,10 @@ export function adminProductQuery(query: AdminProductQuery): Record<string, Quer
     page: query.page,
     pageSize: query.pageSize,
     status: query.status,
+    q: query.q,
+    categoryId: query.categoryId,
+    collectionId: query.collectionId,
+    sort: query.sort,
   };
 }
 
@@ -80,6 +120,8 @@ export function inventoryQuery(query: InventoryQuery): Record<string, QueryValue
     page: query.page,
     pageSize: query.pageSize,
     sku: query.sku,
+    q: query.q,
+    stock: query.stock,
   };
 }
 
@@ -117,13 +159,19 @@ export interface CatalogApi {
   adminProducts: (query?: AdminProductQuery) => Promise<AdminProductPage>;
   adminProduct: (id: string) => Promise<ProductResponse>;
   createProduct: (body: ProductWriteRequest) => Promise<ProductResponse>;
-  updateProduct: (id: string, body: ProductUpdateRequest) => Promise<ProductResponse>;
-  publishProduct: (id: string) => Promise<ProductResponse>;
-  archiveProduct: (id: string) => Promise<ProductResponse>;
-  createOption: (productId: string, body: OptionWriteRequest) => Promise<OptionResponse>;
+  updateProduct: (
+    id: string,
+    body: ProductUpdateRequest & { expectedVersion?: number },
+  ) => Promise<ProductResponse>;
+  publishProduct: (id: string, expectedVersion?: number) => Promise<ProductResponse>;
+  archiveProduct: (id: string, expectedVersion?: number) => Promise<ProductResponse>;
+  createOption: (
+    productId: string,
+    body: OptionWriteRequest & { expectedVersion?: number },
+  ) => Promise<OptionResponse>;
   createOptionValue: (
     optionId: string,
-    body: OptionValueWriteRequest,
+    body: OptionValueWriteRequest & { expectedVersion?: number },
   ) => Promise<OptionValueResponse>;
   createVariant: (productId: string, body: VariantWriteRequest) => Promise<VariantResponse>;
   updateVariant: (id: string, body: VariantUpdateRequest) => Promise<VariantResponse>;
@@ -136,12 +184,45 @@ export interface CatalogApi {
   ) => Promise<MovementResponse>;
   uploadMedia: (productId: string, upload: MediaUpload) => Promise<MediaResponse>;
   updateMedia: (id: string, body: MediaUpdateRequest) => Promise<MediaResponse>;
-  deleteMedia: (id: string) => Promise<void>;
+  deleteMedia: (id: string, expectedVersion?: number) => Promise<void>;
+  dashboard: () => Promise<DashboardSummary>;
+  createVariants: (
+    productId: string,
+    body: { variants: VariantBulkItem[]; expectedVersion?: number },
+  ) => Promise<VariantResponse[]>;
+  orderMedia: (
+    productId: string,
+    body: { ids: string[]; expectedVersion?: number },
+  ) => Promise<ProductResponse>;
+  assignCollectionProduct: (
+    collectionId: string,
+    body: { productId: string; expectedVersion?: number },
+  ) => Promise<void>;
+  removeCollectionProduct: (
+    collectionId: string,
+    productId: string,
+    expectedVersion?: number,
+  ) => Promise<void>;
+  movementHistory: (query?: MovementHistoryQuery) => Promise<{
+    items: Array<
+      MovementResponse & {
+        productId: string;
+        productName: string;
+        sku: string;
+        optionSummary: string;
+        actorEmail: string | null;
+      }
+    >;
+    page: number;
+    pageSize: number;
+    total: number;
+  }>;
+  adminMediaBlob: (id: string) => Promise<Blob>;
 }
 
 export function createCatalogApi(client: ApiClient, csrf: CsrfMemory): CatalogApi {
   async function send<T>(
-    method: 'post' | 'patch' | 'delete',
+    method: 'post' | 'patch' | 'put' | 'delete',
     path: string,
     body?: unknown,
     headers?: HeadersInit,
@@ -150,6 +231,7 @@ export function createCatalogApi(client: ApiClient, csrf: CsrfMemory): CatalogAp
     const run = () => {
       if (method === 'post') return client.post<T>(path, body, { headers });
       if (method === 'patch') return client.patch<T>(path, body, { headers });
+      if (method === 'put') return client.put<T>(path, body, { headers });
       return client.delete<T>(path, { headers });
     };
     try {
@@ -185,8 +267,10 @@ export function createCatalogApi(client: ApiClient, csrf: CsrfMemory): CatalogAp
     adminProduct: (id) => client.get<ProductResponse>(`/api/v1/admin/products/${id}`),
     createProduct: (body) => send('post', '/api/v1/admin/products', body),
     updateProduct: (id, body) => send('patch', `/api/v1/admin/products/${id}`, body),
-    publishProduct: (id) => send('post', `/api/v1/admin/products/${id}/publish`),
-    archiveProduct: (id) => send('post', `/api/v1/admin/products/${id}/archive`),
+    publishProduct: (id, expectedVersion) =>
+      send('post', `/api/v1/admin/products/${id}/publish`, { expectedVersion }),
+    archiveProduct: (id, expectedVersion) =>
+      send('post', `/api/v1/admin/products/${id}/archive`, { expectedVersion }),
     createOption: (productId, body) =>
       send('post', `/api/v1/admin/products/${productId}/options`, body),
     createOptionValue: (optionId, body) =>
@@ -212,7 +296,35 @@ export function createCatalogApi(client: ApiClient, csrf: CsrfMemory): CatalogAp
       return send('post', `/api/v1/admin/products/${productId}/media`, form);
     },
     updateMedia: (id, body) => send('patch', `/api/v1/admin/media/${id}`, body),
-    deleteMedia: (id) => send('delete', `/api/v1/admin/media/${id}`),
+    deleteMedia: (id, expectedVersion) =>
+      send(
+        'delete',
+        `/api/v1/admin/media/${id}${expectedVersion === undefined ? '' : `?expectedVersion=${expectedVersion}`}`,
+      ),
+    dashboard: () => client.get<DashboardSummary>('/api/v1/admin/dashboard/summary'),
+    createVariants: (productId, body) =>
+      send('post', `/api/v1/admin/products/${productId}/variants/bulk`, body),
+    orderMedia: (productId, body) =>
+      send('put', `/api/v1/admin/products/${productId}/media/order`, body),
+    assignCollectionProduct: (collectionId, body) =>
+      send('post', `/api/v1/admin/collections/${collectionId}/products`, body),
+    removeCollectionProduct: (collectionId, productId, expectedVersion) =>
+      send(
+        'delete',
+        `/api/v1/admin/collections/${collectionId}/products/${productId}${
+          expectedVersion === undefined ? '' : `?expectedVersion=${expectedVersion}`
+        }`,
+      ),
+    movementHistory: (query = {}) =>
+      client.get('/api/v1/admin/inventory/movements', {
+        query: {
+          page: query.page,
+          pageSize: query.pageSize,
+          sku: query.sku,
+          variantId: query.variantId,
+        },
+      }),
+    adminMediaBlob: (id) => client.blob(`/api/v1/admin/media/${id}`),
   };
 }
 

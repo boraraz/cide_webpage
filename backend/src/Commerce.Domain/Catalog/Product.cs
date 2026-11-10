@@ -20,6 +20,8 @@ public sealed class Product
 
     public DateTimeOffset? PublishedAt { get; set; }
 
+    public int Version { get; set; } = 1;
+
     public DateTimeOffset CreatedAt { get; set; }
 
     public DateTimeOffset UpdatedAt { get; set; }

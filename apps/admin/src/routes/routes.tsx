@@ -7,6 +7,14 @@ import { NotFoundPage } from '@/pages/NotFoundPage';
 import { RouteErrorPage } from '@/pages/RouteErrorPage';
 
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
+const ProductsPage = lazy(() => import('@/pages/ProductsPage'));
+const ProductEditorPage = lazy(() => import('@/pages/ProductEditorPage'));
+const CategoriesPage = lazy(() => import('@/pages/CategoriesPage'));
+const CollectionsPage = lazy(() => import('@/pages/CollectionsPage'));
+const InventoryPage = lazy(() => import('@/pages/InventoryPage'));
+const MovementsPage = lazy(() => import('@/pages/MovementsPage'));
+const HomepagePage = lazy(() => import('@/pages/HomepagePage'));
+const HomepagePreviewPage = lazy(() => import('@/pages/HomepagePreviewPage'));
 
 /* Module routes are added here, and to `navigation.ts`, as each admin module is implemented. */
 export const routes: RouteObject[] = [
@@ -20,6 +28,14 @@ export const routes: RouteObject[] = [
         element: <AdminLayout />,
         children: [
           { index: true, element: <DashboardPage /> },
+          { path: 'products', element: <ProductsPage /> },
+          { path: 'products/:id', element: <ProductEditorPage /> },
+          { path: 'categories', element: <CategoriesPage /> },
+          { path: 'collections', element: <CollectionsPage /> },
+          { path: 'inventory', element: <InventoryPage /> },
+          { path: 'inventory/movements', element: <MovementsPage /> },
+          { path: 'content/homepage', element: <HomepagePage /> },
+          { path: 'content/homepage/preview', element: <HomepagePreviewPage /> },
           { path: '*', element: <NotFoundPage /> },
         ],
       },

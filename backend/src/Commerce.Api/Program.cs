@@ -66,5 +66,6 @@ app.MapAccountEndpoints();
 app.MapAdminAuthEndpoints();
 app.MapPublicCatalogEndpoints();
 app.MapAdminCatalogEndpoints();
+app.MapContentEndpoints();
 
 app.Run();

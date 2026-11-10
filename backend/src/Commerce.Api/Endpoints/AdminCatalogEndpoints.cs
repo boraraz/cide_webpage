@@ -36,6 +36,15 @@ public static class AdminCatalogEndpoints
             .Produces<CollectionResponse>().ProducesValidationProblem();
         collections.MapDelete("/{id:guid}", DeleteCollectionAsync).AddEndpointFilter<RequireAntiforgery>().WithName("DeleteCollection")
             .Produces(StatusCodes.Status204NoContent);
+        collections.MapPost("/{id:guid}/products", AssignCollectionProductAsync).AddEndpointFilter<RequireAntiforgery>().WithName("AssignCollectionProduct")
+            .Produces(StatusCodes.Status204NoContent);
+        collections.MapDelete("/{id:guid}/products/{productId:guid}", RemoveCollectionProductAsync).AddEndpointFilter<RequireAntiforgery>().WithName("RemoveCollectionProduct")
+            .Produces(StatusCodes.Status204NoContent);
+
+        app.MapGet("/api/v1/admin/dashboard/summary", async (ICatalogReader reader, CancellationToken cancellationToken) =>
+            Results.Ok(await reader.DashboardAsync(cancellationToken)))
+            .WithTags("Admin catalog").RequireAuthorization(RoleNames.Admin).WithName("GetDashboardSummary")
+            .Produces<DashboardSummary>();
 
         var products = app.MapGroup("/api/v1/admin/products").WithTags("Admin catalog").RequireAuthorization(RoleNames.Admin);
         products.MapGet("/", ListProductsAsync).WithName("ListAdminProducts").Produces<AdminProductPage>();
@@ -56,6 +65,10 @@ public static class AdminCatalogEndpoints
             .Produces<OptionResponse>(StatusCodes.Status201Created);
         products.MapPost("/{id:guid}/variants", AddVariantAsync).AddEndpointFilter<RequireAntiforgery>().WithName("CreateProductVariant")
             .Produces<VariantResponse>(StatusCodes.Status201Created).ProducesValidationProblem();
+        products.MapPost("/{id:guid}/variants/bulk", AddVariantsAsync).AddEndpointFilter<RequireAntiforgery>().WithName("CreateProductVariants")
+            .Produces<VariantResponse[]>(StatusCodes.Status201Created).ProducesValidationProblem();
+        products.MapPut("/{id:guid}/media/order", OrderMediaAsync).AddEndpointFilter<RequireAntiforgery>().WithName("OrderProductMedia")
+            .Produces<ProductResponse>();
         products.MapPost("/{id:guid}/media", UploadMediaAsync)
             .AddEndpointFilter<RequireAntiforgery>()
             .RequireRateLimiting(CatalogRateLimits.MediaUpload)
@@ -84,6 +97,7 @@ public static class AdminCatalogEndpoints
 
         var inventory = app.MapGroup("/api/v1/admin/inventory").WithTags("Admin inventory").RequireAuthorization(RoleNames.Admin);
         inventory.MapGet("/", ListInventoryAsync).WithName("ListInventory").Produces<InventoryPage>();
+        inventory.MapGet("/movements", MovementHistoryAsync).WithName("ListInventoryMovementHistory").Produces<MovementPage>();
         inventory.MapGet("/{variantId:guid}/movements", MovementsAsync).WithName("ListInventoryMovements")
             .Produces<MovementResponse[]>();
         inventory.MapPost("/{variantId:guid}/adjustments", AdjustAsync).AddEndpointFilter<RequireAntiforgery>().WithName("AdjustInventory")
@@ -133,14 +147,31 @@ public static class AdminCatalogEndpoints
     private static Task<IResult> DeleteCollectionAsync(Guid id, CollectionService collections, CancellationToken cancellationToken) =>
         DeleteAsync(() => collections.DeleteAsync(id, cancellationToken));
 
-    private static async Task<IResult> ListProductsAsync(ICatalogReader reader, int? page, int? pageSize, string? status, CancellationToken cancellationToken)
+    private static async Task<IResult> ListProductsAsync(
+        ICatalogReader reader,
+        int? page,
+        int? pageSize,
+        string? status,
+        string? q,
+        Guid? categoryId,
+        Guid? collectionId,
+        string? sort,
+        CancellationToken cancellationToken)
     {
         if (!TryPage(page, pageSize, out var resolvedPage, out var resolvedSize, out var error))
         {
             return error!;
         }
 
-        return Results.Ok(await reader.AdminProductsAsync(resolvedPage, resolvedSize, status, cancellationToken));
+        var productSort = sort is null or "updated" or "" ? "updated" : sort;
+        if (productSort is not ("updated" or "name"))
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["sort"] = ["Sort must be updated or name."] });
+        }
+
+        return Results.Ok(await reader.AdminProductsAsync(
+            new AdminProductQuery(resolvedPage, resolvedSize, status, q, categoryId, collectionId, productSort),
+            cancellationToken));
     }
 
     private static async Task<IResult> CreateProductAsync(ProductWriteRequest request, ProductService products, CancellationToken cancellationToken) =>
@@ -150,31 +181,31 @@ public static class AdminCatalogEndpoints
 
     private static async Task<IResult> UpdateProductAsync(Guid id, ProductUpdateRequest request, ProductService products, CancellationToken cancellationToken) =>
         CatalogHttp.From(
-            await products.UpdateAsync(id, request.Name, request.Slug, request.ShortDescription, request.Description, request.Brand, request.IsFeatured, request.CategoryIds, request.CollectionIds, cancellationToken),
+            await products.UpdateAsync(id, request.Name, request.Slug, request.ShortDescription, request.Description, request.Brand, request.IsFeatured, request.CategoryIds, request.CollectionIds, cancellationToken, request.ExpectedVersion),
             Results.Ok);
 
-    private static async Task<IResult> PublishAsync(Guid id, ProductService products, CancellationToken cancellationToken) =>
-        CatalogHttp.From(await products.PublishAsync(id, cancellationToken), Results.Ok);
+    private static async Task<IResult> PublishAsync(Guid id, ProductVersionBody body, ProductService products, CancellationToken cancellationToken) =>
+        CatalogHttp.From(await products.PublishAsync(id, cancellationToken, body.ExpectedVersion), Results.Ok);
 
-    private static async Task<IResult> ArchiveAsync(Guid id, ProductService products, CancellationToken cancellationToken) =>
-        CatalogHttp.From(await products.ArchiveAsync(id, cancellationToken), Results.Ok);
+    private static async Task<IResult> ArchiveAsync(Guid id, ProductVersionBody body, ProductService products, CancellationToken cancellationToken) =>
+        CatalogHttp.From(await products.ArchiveAsync(id, cancellationToken, body.ExpectedVersion), Results.Ok);
 
     private static async Task<IResult> AddOptionAsync(Guid id, OptionWriteRequest request, ProductService products, CancellationToken cancellationToken) =>
-        CatalogHttp.From(await products.AddOptionAsync(id, request.Name, request.Position, cancellationToken), value => Results.Created($"/api/v1/admin/options/{value.Id}", value));
+        CatalogHttp.From(await products.AddOptionAsync(id, request.Name, request.Position, cancellationToken, request.ExpectedVersion), value => Results.Created($"/api/v1/admin/options/{value.Id}", value));
 
     private static async Task<IResult> UpdateOptionAsync(Guid id, OptionUpdateRequest request, ProductService products, CancellationToken cancellationToken) =>
-        CatalogHttp.From(await products.UpdateOptionAsync(id, request.Name, request.Position, cancellationToken), Results.Ok);
+        CatalogHttp.From(await products.UpdateOptionAsync(id, request.Name, request.Position, cancellationToken, request.ExpectedVersion), Results.Ok);
 
-    private static Task<IResult> DeleteOptionAsync(Guid id, ProductService products, CancellationToken cancellationToken) =>
-        DeleteAsync(() => products.DeleteOptionAsync(id, cancellationToken));
+    private static Task<IResult> DeleteOptionAsync(Guid id, int? expectedVersion, ProductService products, CancellationToken cancellationToken) =>
+        DeleteAsync(() => products.DeleteOptionAsync(id, cancellationToken, expectedVersion));
 
     private static async Task<IResult> AddOptionValueAsync(Guid id, OptionValueWriteRequest request, ProductService products, CancellationToken cancellationToken) =>
         CatalogHttp.From(
-            await products.AddOptionValueAsync(id, request.Value, request.Code, request.Position, cancellationToken),
+            await products.AddOptionValueAsync(id, request.Value, request.Code, request.Position, cancellationToken, request.ExpectedVersion),
             value => Results.Created($"/api/v1/admin/option-values/{value.Id}", value));
 
-    private static Task<IResult> DeleteOptionValueAsync(Guid id, ProductService products, CancellationToken cancellationToken) =>
-        DeleteAsync(() => products.DeleteOptionValueAsync(id, cancellationToken));
+    private static Task<IResult> DeleteOptionValueAsync(Guid id, int? expectedVersion, ProductService products, CancellationToken cancellationToken) =>
+        DeleteAsync(() => products.DeleteOptionValueAsync(id, cancellationToken, expectedVersion));
 
     private static async Task<IResult> AddVariantAsync(
         Guid id,
@@ -189,7 +220,7 @@ public static class AdminCatalogEndpoints
         }
 
         return CatalogHttp.From(
-            await products.AddVariantAsync(id, request.Sku, request.Barcode, price, compareAt, request.IsActive, request.OptionValueIds ?? [], request.InitialQuantity, Actor(user), cancellationToken),
+            await products.AddVariantAsync(id, request.Sku, request.Barcode, price, compareAt, request.IsActive, request.OptionValueIds ?? [], request.InitialQuantity, Actor(user), cancellationToken, request.ExpectedVersion),
             value => Results.Created($"/api/v1/admin/variants/{value.Id}", value));
     }
 
@@ -219,21 +250,36 @@ public static class AdminCatalogEndpoints
         }
 
         return CatalogHttp.From(
-            await products.UpdateVariantAsync(id, request.Sku, request.Barcode, price, compareAt, compareSpecified, request.IsActive, request.OptionValueIds, cancellationToken),
+            await products.UpdateVariantAsync(id, request.Sku, request.Barcode, price, compareAt, compareSpecified, request.IsActive, request.OptionValueIds, cancellationToken, request.ExpectedVersion),
             Results.Ok);
     }
 
-    private static Task<IResult> DeleteVariantAsync(Guid id, ProductService products, CancellationToken cancellationToken) =>
-        DeleteAsync(() => products.DeleteVariantAsync(id, cancellationToken));
+    private static Task<IResult> DeleteVariantAsync(Guid id, int? expectedVersion, ProductService products, CancellationToken cancellationToken) =>
+        DeleteAsync(() => products.DeleteVariantAsync(id, cancellationToken, expectedVersion));
 
-    private static async Task<IResult> ListInventoryAsync(ICatalogReader reader, int? page, int? pageSize, string? sku, CancellationToken cancellationToken)
+    private static async Task<IResult> ListInventoryAsync(ICatalogReader reader, int? page, int? pageSize, string? q, string? sku, string? stock, CancellationToken cancellationToken)
     {
         if (!TryPage(page, pageSize, out var resolvedPage, out var resolvedSize, out var error))
         {
             return error!;
         }
 
-        return Results.Ok(await reader.InventoryAsync(resolvedPage, resolvedSize, sku, cancellationToken));
+        if (stock is not (null or "" or "all" or "in_stock" or "low" or "out"))
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["stock"] = ["Stock must be all, in_stock, low, or out."] });
+        }
+
+        return Results.Ok(await reader.InventoryAsync(new AdminInventoryQuery(resolvedPage, resolvedSize, q ?? sku, stock), cancellationToken));
+    }
+
+    private static async Task<IResult> MovementHistoryAsync(ICatalogReader reader, int? page, int? pageSize, string? sku, Guid? variantId, CancellationToken cancellationToken)
+    {
+        if (!TryPage(page, pageSize, out var resolvedPage, out var resolvedSize, out var error))
+        {
+            return error!;
+        }
+
+        return Results.Ok(await reader.MovementHistoryAsync(new MovementHistoryQuery(resolvedPage, resolvedSize, sku, variantId), cancellationToken));
     }
 
     private static async Task<IResult> MovementsAsync(Guid variantId, ICatalogReader reader, CancellationToken cancellationToken)
@@ -263,6 +309,7 @@ public static class AdminCatalogEndpoints
         [FromForm] Guid? variantId,
         [FromForm] int? displayOrder,
         [FromForm] bool? isPrimary,
+        [FromForm] int? expectedVersion,
         MediaService media,
         CancellationToken cancellationToken)
     {
@@ -275,23 +322,55 @@ public static class AdminCatalogEndpoints
         using var buffer = new MemoryStream();
         await stream.CopyToAsync(buffer, cancellationToken);
         return CatalogHttp.From(
-            await media.UploadAsync(id, buffer.ToArray(), altText, variantId, displayOrder, isPrimary ?? false, cancellationToken),
+            await media.UploadAsync(id, buffer.ToArray(), altText, variantId, displayOrder, isPrimary ?? false, cancellationToken, expectedVersion),
             value => Results.Created(value.Path, value));
     }
 
     private static async Task<IResult> OpenMediaAsync(Guid id, MediaService media, CancellationToken cancellationToken)
     {
         var stored = await media.OpenAdminAsync(id, cancellationToken);
-        return stored is null ? Results.NotFound() : Results.File(stored.Content, stored.ContentType);
+        return stored is null ? Results.NotFound() : MediaHttp.File(stored, published: false);
     }
 
     private static async Task<IResult> UpdateMediaAsync(Guid id, MediaUpdateRequest request, MediaService media, CancellationToken cancellationToken) =>
         CatalogHttp.From(
-            await media.UpdateAsync(id, request.AltText, request.DisplayOrder, request.IsPrimary, request.ClearVariant ? null : request.VariantId, request.ClearVariant || request.VariantId is not null, cancellationToken),
+            await media.UpdateAsync(id, request.AltText, request.DisplayOrder, request.IsPrimary, request.ClearVariant ? null : request.VariantId, request.ClearVariant || request.VariantId is not null, cancellationToken, request.ExpectedVersion),
             Results.Ok);
 
-    private static Task<IResult> DeleteMediaAsync(Guid id, MediaService media, CancellationToken cancellationToken) =>
-        DeleteAsync(() => media.DeleteAsync(id, cancellationToken));
+    private static Task<IResult> DeleteMediaAsync(Guid id, int? expectedVersion, MediaService media, CancellationToken cancellationToken) =>
+        DeleteAsync(() => media.DeleteAsync(id, cancellationToken, expectedVersion));
+
+    private static async Task<IResult> AddVariantsAsync(
+        Guid id,
+        VariantBulkRequest request,
+        ProductService products,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken)
+    {
+        var drafts = new List<NewVariant>();
+        foreach (var variant in request.Variants ?? [])
+        {
+            if (!TryPrices(variant.Price, variant.CompareAtPrice, out var price, out var compareAt, out var error))
+            {
+                return error!;
+            }
+
+            drafts.Add(new NewVariant(variant.Sku, variant.Barcode, price, compareAt, variant.IsActive, variant.OptionValueIds ?? [], variant.InitialQuantity));
+        }
+
+        return CatalogHttp.From(
+            await products.AddVariantsAsync(id, drafts, Actor(user), cancellationToken, request.ExpectedVersion),
+            value => Results.Created($"/api/v1/admin/products/{id}", value));
+    }
+
+    private static async Task<IResult> OrderMediaAsync(Guid id, MediaOrderRequest request, MediaService media, CancellationToken cancellationToken) =>
+        CatalogHttp.From(await media.OrderAsync(id, request.Ids ?? [], cancellationToken, request.ExpectedVersion), Results.Ok);
+
+    private static async Task<IResult> AssignCollectionProductAsync(Guid id, CollectionProductRequest request, CollectionService collections, CancellationToken cancellationToken) =>
+        CatalogHttp.From(await collections.AssignProductAsync(id, request.ProductId, cancellationToken, request.ExpectedVersion), _ => Results.NoContent());
+
+    private static Task<IResult> RemoveCollectionProductAsync(Guid id, Guid productId, int? expectedVersion, CollectionService collections, CancellationToken cancellationToken) =>
+        DeleteAsync(() => collections.RemoveProductAsync(id, productId, cancellationToken, expectedVersion));
 
     private static async Task<IResult> DeleteAsync(Func<Task<CatalogResult<bool>>> action)
     {

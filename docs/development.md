@@ -194,8 +194,9 @@ the generated file.
 
 ### EF Core migrations
 
-`npm run api:migrate` applies pending migrations to the local database, including the catalog
-migration. The API never migrates on startup. If migrations are pending, the role and catalog
+`npm run api:migrate` applies pending migrations to the local database, including the catalog and
+`AdminContent` migrations. The API never migrates on startup. Do not drop the Postgres volume. If
+migrations are pending, the role and catalog
 seeders log a warning and skip. Do not drop the Postgres volume to upgrade.
 
 ```bash

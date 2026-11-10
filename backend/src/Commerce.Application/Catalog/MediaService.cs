@@ -11,7 +11,8 @@ public sealed class MediaService(ICatalogStore store, IObjectStorage storage, Ti
         Guid? variantId,
         int? displayOrder,
         bool isPrimary,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        int? expectedVersion = null)
     {
         var product = await store.FindProductGraphAsync(productId, cancellationToken);
         if (product is null)
@@ -56,6 +57,8 @@ public sealed class MediaService(ICatalogStore store, IObjectStorage storage, Ti
             IsPrimary = product.Media.Count == 0 || isPrimary,
             ContentType = contentType,
             FileSize = content.Length,
+            Width = ImageHeader.Read(content.Span, contentType)?.Width,
+            Height = ImageHeader.Read(content.Span, contentType)?.Height,
             CreatedAt = now,
             ObjectKey = $"catalog/{product.Id}/{Guid.Empty}.{ImageSignature.ExtensionFor(contentType)}",
         };
@@ -71,8 +74,14 @@ public sealed class MediaService(ICatalogStore store, IObjectStorage storage, Ti
 
             product.Media.Add(media);
             store.Add(media);
-            await store.SaveChangesAsync(cancellationToken);
-            return CatalogResult<MediaResponse>.Ok(Map(media));
+            var saved = await CatalogSupport.SaveProductAsync(
+                store, product, expectedVersion, now, () => CatalogMapper.Media(media), cancellationToken);
+            if (!saved.Succeeded)
+            {
+                await storage.DeleteAsync(media.ObjectKey, cancellationToken);
+            }
+
+            return saved;
         }
         catch (CatalogConflictException conflict)
         {
@@ -95,7 +104,8 @@ public sealed class MediaService(ICatalogStore store, IObjectStorage storage, Ti
         bool? isPrimary,
         Guid? variantId,
         bool variantSpecified,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        int? expectedVersion = null)
     {
         var media = await store.FindMediaAsync(mediaId, cancellationToken);
         if (media is null)
@@ -149,10 +159,52 @@ public sealed class MediaService(ICatalogStore store, IObjectStorage storage, Ti
             }
         }
 
-        return await CatalogSupport.SaveAsync(store, () => Map(media), cancellationToken);
+        return product is null
+            ? CatalogResult<MediaResponse>.NotFound()
+            : await CatalogSupport.SaveProductAsync(store, product, expectedVersion, time.GetUtcNow(), () => CatalogMapper.Media(media), cancellationToken);
     }
 
-    public async Task<CatalogResult<bool>> DeleteAsync(Guid mediaId, CancellationToken cancellationToken)
+    public async Task<CatalogResult<ProductResponse>> OrderAsync(
+        Guid productId,
+        IReadOnlyList<Guid> ids,
+        CancellationToken cancellationToken,
+        int? expectedVersion = null)
+    {
+        var product = await store.FindProductGraphAsync(productId, cancellationToken);
+        if (product is null)
+        {
+            return CatalogResult<ProductResponse>.NotFound();
+        }
+
+        var existing = product.Media.Select(media => media.Id).ToHashSet();
+        if (ids.Count != existing.Count || ids.Distinct().Count() != ids.Count || ids.Any(id => !existing.Contains(id)))
+        {
+            return CatalogResult<ProductResponse>.Invalid(new Dictionary<string, string[]>
+            {
+                ["ids"] = ["List every image on the product exactly once."],
+            });
+        }
+
+        for (var index = 0; index < ids.Count; index++)
+        {
+            product.Media.First(media => media.Id == ids[index]).DisplayOrder = index;
+        }
+
+        if (product.Status == ProductStatus.Active)
+        {
+            var errors = PublishRules.ForProduct(product);
+            if (errors.Count > 0)
+            {
+                store.Abandon();
+                return CatalogResult<ProductResponse>.Invalid(errors);
+            }
+        }
+
+        return await CatalogSupport.SaveProductAsync(
+            store, product, expectedVersion, time.GetUtcNow(), () => CatalogMapper.Product(product, includeStock: true), cancellationToken);
+    }
+
+    public async Task<CatalogResult<bool>> DeleteAsync(Guid mediaId, CancellationToken cancellationToken, int? expectedVersion = null)
     {
         var media = await store.FindMediaAsync(mediaId, cancellationToken);
         if (media is null)
@@ -175,7 +227,7 @@ public sealed class MediaService(ICatalogStore store, IObjectStorage storage, Ti
 
         var key = media.ObjectKey;
         store.Remove(media);
-        var saved = await CatalogSupport.SaveAsync(store, () => true, cancellationToken);
+        var saved = await CatalogSupport.SaveProductAsync(store, product, expectedVersion, time.GetUtcNow(), () => true, cancellationToken);
         if (saved.Succeeded)
         {
             await storage.DeleteAsync(key, cancellationToken);
@@ -210,14 +262,4 @@ public sealed class MediaService(ICatalogStore store, IObjectStorage storage, Ti
 
         return await storage.OpenAsync(media.ObjectKey, cancellationToken);
     }
-
-    private static MediaResponse Map(ProductMedia media) => new(
-        media.Id,
-        media.VariantId,
-        media.AltText,
-        media.DisplayOrder,
-        media.IsPrimary,
-        media.ContentType,
-        media.FileSize,
-        CatalogMapper.MediaPath(media.Id));
 }

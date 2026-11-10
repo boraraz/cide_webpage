@@ -108,6 +108,9 @@ public sealed class CatalogRulesTests
         public Task SaveChangesAsync(CancellationToken cancellationToken) =>
             throw new InvalidOperationException("database unavailable");
 
+        public Task<CatalogResult<int>> SaveProductGraphAsync(Product product, int? expectedVersion, DateTimeOffset now, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("database unavailable");
+
         public Task<Product?> FindProductGraphAsync(Guid id, CancellationToken cancellationToken) =>
             Task.FromResult(Product);
 

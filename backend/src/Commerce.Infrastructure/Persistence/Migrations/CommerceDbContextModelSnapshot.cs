@@ -297,6 +297,12 @@ namespace Commerce.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
+                    b.Property<int>("Version")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("version");
+
                     b.HasKey("Id")
                         .HasName("pk_products");
 
@@ -384,6 +390,10 @@ namespace Commerce.Infrastructure.Persistence.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("file_size");
 
+                    b.Property<int?>("Height")
+                        .HasColumnType("integer")
+                        .HasColumnName("height");
+
                     b.Property<bool>("IsPrimary")
                         .HasColumnType("boolean")
                         .HasColumnName("is_primary");
@@ -401,6 +411,10 @@ namespace Commerce.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("VariantId")
                         .HasColumnType("uuid")
                         .HasColumnName("variant_id");
+
+                    b.Property<int?>("Width")
+                        .HasColumnType("integer")
+                        .HasColumnName("width");
 
                     b.HasKey("Id")
                         .HasName("pk_product_media");
@@ -641,6 +655,173 @@ namespace Commerce.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_variant_option_values_option_value_id");
 
                     b.ToTable("variant_option_values", (string)null);
+                });
+
+            modelBuilder.Entity("Commerce.Domain.Content.ContentMedia", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AltText")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("alt_text");
+
+                    b.Property<long>("ByteSize")
+                        .HasColumnType("bigint")
+                        .HasColumnName("byte_size");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("content_type");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<int?>("Height")
+                        .HasColumnType("integer")
+                        .HasColumnName("height");
+
+                    b.Property<string>("ObjectKey")
+                        .IsRequired()
+                        .HasMaxLength(240)
+                        .HasColumnType("character varying(240)")
+                        .HasColumnName("object_key");
+
+                    b.Property<int?>("Width")
+                        .HasColumnType("integer")
+                        .HasColumnName("width");
+
+                    b.HasKey("Id")
+                        .HasName("pk_content_media");
+
+                    b.HasIndex("ObjectKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_content_media_object_key");
+
+                    b.ToTable("content_media", (string)null);
+                });
+
+            modelBuilder.Entity("Commerce.Domain.Content.ContentPage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("DraftRevisionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("draft_revision_id");
+
+                    b.Property<int>("DraftVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("draft_version");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("key");
+
+                    b.Property<DateTimeOffset?>("PublishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("published_at");
+
+                    b.Property<Guid?>("PublishedRevisionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("published_revision_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_content_pages");
+
+                    b.HasIndex("DraftRevisionId")
+                        .HasDatabaseName("ix_content_pages_draft_revision_id");
+
+                    b.HasIndex("Key")
+                        .IsUnique()
+                        .HasDatabaseName("ix_content_pages_key");
+
+                    b.HasIndex("PublishedRevisionId")
+                        .HasDatabaseName("ix_content_pages_published_revision_id");
+
+                    b.ToTable("content_pages", (string)null);
+                });
+
+            modelBuilder.Entity("Commerce.Domain.Content.ContentRevision", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Configuration")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("configuration");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<Guid>("PageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("page_id");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_content_revisions");
+
+                    b.HasIndex("PageId", "Version")
+                        .IsUnique()
+                        .HasDatabaseName("ix_content_revisions_page_id_version");
+
+                    b.ToTable("content_revisions", (string)null);
+                });
+
+            modelBuilder.Entity("Commerce.Domain.Content.ContentRevisionMedia", b =>
+                {
+                    b.Property<Guid>("RevisionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("revision_id");
+
+                    b.Property<Guid>("MediaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("media_id");
+
+                    b.HasKey("RevisionId", "MediaId")
+                        .HasName("pk_content_revision_media");
+
+                    b.HasIndex("MediaId")
+                        .HasDatabaseName("ix_content_revision_media_media_id");
+
+                    b.ToTable("content_revision_media", (string)null);
                 });
 
             modelBuilder.Entity("Commerce.Domain.Identity.AuthSession", b =>
@@ -1107,6 +1288,58 @@ namespace Commerce.Infrastructure.Persistence.Migrations
                     b.Navigation("Variant");
                 });
 
+            modelBuilder.Entity("Commerce.Domain.Content.ContentPage", b =>
+                {
+                    b.HasOne("Commerce.Domain.Content.ContentRevision", "DraftRevision")
+                        .WithMany()
+                        .HasForeignKey("DraftRevisionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_content_pages_content_revisions_draft_revision_id");
+
+                    b.HasOne("Commerce.Domain.Content.ContentRevision", "PublishedRevision")
+                        .WithMany()
+                        .HasForeignKey("PublishedRevisionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_content_pages_content_revisions_published_revision_id");
+
+                    b.Navigation("DraftRevision");
+
+                    b.Navigation("PublishedRevision");
+                });
+
+            modelBuilder.Entity("Commerce.Domain.Content.ContentRevision", b =>
+                {
+                    b.HasOne("Commerce.Domain.Content.ContentPage", "Page")
+                        .WithMany()
+                        .HasForeignKey("PageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_content_revisions_content_pages_page_id");
+
+                    b.Navigation("Page");
+                });
+
+            modelBuilder.Entity("Commerce.Domain.Content.ContentRevisionMedia", b =>
+                {
+                    b.HasOne("Commerce.Domain.Content.ContentMedia", "Media")
+                        .WithMany()
+                        .HasForeignKey("MediaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_content_revision_media_content_media_media_id");
+
+                    b.HasOne("Commerce.Domain.Content.ContentRevision", "Revision")
+                        .WithMany("Media")
+                        .HasForeignKey("RevisionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_content_revision_media_content_revisions_revision_id");
+
+                    b.Navigation("Media");
+
+                    b.Navigation("Revision");
+                });
+
             modelBuilder.Entity("Commerce.Domain.Identity.AuthSession", b =>
                 {
                     b.HasOne("Commerce.Domain.Identity.AuthSession", null)
@@ -1213,6 +1446,11 @@ namespace Commerce.Infrastructure.Persistence.Migrations
                     b.Navigation("Balance");
 
                     b.Navigation("Selections");
+                });
+
+            modelBuilder.Entity("Commerce.Domain.Content.ContentRevision", b =>
+                {
+                    b.Navigation("Media");
                 });
 
             modelBuilder.Entity("Commerce.Domain.Identity.Role", b =>

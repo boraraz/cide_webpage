@@ -4,7 +4,9 @@ using Amazon.S3;
 using Commerce.Application.Identity;
 using Commerce.Domain.Identity;
 using Commerce.Application.Catalog;
+using Commerce.Application.Content;
 using Commerce.Infrastructure.Catalog;
+using Commerce.Infrastructure.Content;
 using Commerce.Infrastructure.Identity;
 using Commerce.Infrastructure.Persistence;
 using Commerce.Infrastructure.Storage;
@@ -61,6 +63,8 @@ public static class DependencyInjection
         services.AddHostedService<IdentityStartupService>();
         services.AddHostedService<SecurityEventRetentionService>();
         services.AddScoped<ICatalogStore, CatalogStore>();
+        services.AddScoped<IContentStore, ContentStore>();
+        services.AddScoped<ContentService>();
         services.AddScoped<ICatalogReader, CatalogReader>();
         services.AddScoped<IObjectStorage, S3ObjectStorage>();
         services.AddScoped<CatalogSeeder>();

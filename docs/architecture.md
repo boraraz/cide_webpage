@@ -32,17 +32,18 @@ flowchart LR
 
 ## Component responsibilities
 
-| Component                 | Responsibility                                                                                            |
-| ------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `apps/storefront`         | Customer shop. Account pages exist. Catalog listing and checkout are not built.                           |
-| `apps/admin`              | Back office. Sign-in is required. Catalog navigation stays disabled. Not a public site.                   |
-| `packages/ui`             | Shared design tokens plus primitives (`Button`, `TextField`, `Drawer`, and others).                       |
-| `packages/api-client`     | Typed `fetch` wrapper, in-memory CSRF token, and identity and catalog calls. Never stores session tokens. |
-| `packages/shared-types`   | TypeScript types generated from the API's OpenAPI document.                                               |
-| `Commerce.Api`            | Composition root: HTTP endpoints, cookie auth, CSRF, rate limits, OpenAPI, CORS, error handling.          |
-| `Commerce.Application`    | Identity and catalog use cases, plus the catalog and object-storage ports. No EF Core types.              |
-| `Commerce.Domain`         | Identity and catalog entities, slug, money, SKU and publish rules. No EF attributes.                      |
-| `Commerce.Infrastructure` | EF Core `CommerceDbContext`, password hasher, SMTP, seeds, catalog queries and S3 storage.                |
+| Component                 | Responsibility                                                                                                      |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `apps/storefront`         | Customer shop. Account pages exist. Catalog listing and checkout are not built.                                     |
+| `apps/admin`              | Back office. Sign-in is required. Catalog navigation stays disabled. Not a public site.                             |
+| `packages/ui`             | Shared design tokens plus primitives (`Button`, `TextField`, `Drawer`, and others).                                 |
+| `packages/api-client`     | Typed `fetch` wrapper, in-memory CSRF token, and identity, catalog and homepage calls. Never stores session tokens. |
+| `packages/content`        | Presentational homepage renderer. It does not fetch. Admin preview passes the public document in.                   |
+| `packages/shared-types`   | TypeScript types generated from the API's OpenAPI document.                                                         |
+| `Commerce.Api`            | Composition root: HTTP endpoints, cookie auth, CSRF, rate limits, OpenAPI, CORS, error handling.                    |
+| `Commerce.Application`    | Identity and catalog use cases, plus the catalog and object-storage ports. No EF Core types.                        |
+| `Commerce.Domain`         | Identity and catalog entities, slug, money, SKU and publish rules. No EF attributes.                                |
+| `Commerce.Infrastructure` | EF Core `CommerceDbContext`, password hasher, SMTP, seeds, catalog queries and S3 storage.                          |
 
 ## Monorepo structure
 
@@ -257,6 +258,26 @@ least one active variant with a valid SKU and price, a complete unique combinati
 image with alt text. Stock may be zero. The first publish sets `PublishedAt`. Later archive and
 publish cycles keep that timestamp. Products are archived, not hard-deleted.
 
+`products.version` starts at 1. Merchandising writes increment it in the same database transaction
+with `UPDATE … WHERE version = expected RETURNING version` when the client sends `expectedVersion`.
+A mismatch returns 409 and writes nothing. Leaving the field out keeps the previous last-write-wins
+behavior. Stock adjustments keep their own row lock and idempotency key and do not change this
+version.
+
+## Homepage content
+
+`content_pages` stores the homepage key, draft revision pointer, published revision pointer,
+`published_at` and `draft_version`. `content_revisions` and `content_revision_media` are insert-only.
+Triggers reject update and delete. Saving a draft inserts a revision and advances `draft_version`.
+Publishing points `published_revision_id` at the current draft and sets `published_at`. It does not
+modify the revision. Public `GET /api/v1/content/homepage` reads only the published revision, drops
+hidden blocks, and uses `Cache-Control: public, max-age=30`. Before the first publish the response
+is `{ "publishedAt": null, "blocks": [] }`.
+
+A content image is public only while `content_revision_media.revision_id` equals the page's
+`published_revision_id`. Replacing a homepage that still references the image keeps it public.
+Removing it makes the public GET 404. The admin GET stays available. Objects are not deleted.
+
 ## Object storage integration
 
 - **S3 API only.** The API talks to storage solely through the S3 API (`AWSSDK.S3`), so any
@@ -275,7 +296,13 @@ publish cycles keep that timestamp. Products are archived, not hard-deleted.
   (detected from the file signature, at most 5 MiB) to the API. The API writes
   `catalog/{productId}/{mediaId}.{ext}` and streams reads back. The browser never receives a
   storage credential or a public object URL. Public `GET /api/v1/media/{id}` streams an image only
-  when the product is `Active` and, for a variant image, that variant is active.
+  when the product is `Active` and, for a variant image, that variant is active. Public media uses
+  `Cache-Control: public, max-age=86400, immutable` because the bytes for an id never change.
+  Admin media uses `Cache-Control: private, no-store`. Homepage images use
+  `content/{mediaId}.{ext}`. The admin origin loads unpublished images with a credentialed fetch
+  and an object URL, because a cross-origin `<img>` does not send the session cookie. Phase 5 will
+  add private WebP siblings at 480, 960 and 1600 pixels and a `w` query on the same GET routes.
+  Phase 4 returns one original source.
 
 ## Future module boundaries
 

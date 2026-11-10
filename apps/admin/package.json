@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@commerce/api-client": "*",
+    "@commerce/content": "*",
     "@commerce/shared-types": "*",
     "@commerce/ui": "*",
     "@hookform/resolvers": "^5.9.2",
