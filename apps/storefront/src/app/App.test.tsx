@@ -23,6 +23,16 @@ describe('storefront shell', () => {
           headers: { 'Content-Type': 'application/problem+json' },
         });
       }
+      if (url.includes('/api/v1/content/homepage')) {
+        return new Response(JSON.stringify({ publishedAt: null, blocks: [] }), {
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      if (url.includes('/api/v1/categories')) {
+        return new Response(JSON.stringify([]), {
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
       return new Response(JSON.stringify({ status: 'Healthy', checks: [] }), {
         headers: { 'Content-Type': 'application/json' },
       });
@@ -33,10 +43,12 @@ describe('storefront shell', () => {
     renderAt('/');
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: /configurable content blocks/i }),
+      await screen.findByRole('heading', { level: 1, name: /nothing is published yet/i }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('banner')).toHaveTextContent(/sportswear/i);
-    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/login');
+    const banner = screen.getByRole('banner');
+    expect(banner).toHaveTextContent(/sportswear/i);
+    expect(within(banner).getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/login');
+    expect(within(banner).getByRole('button', { name: 'Bag (coming soon)' })).toBeDisabled();
     expect(screen.getByRole('contentinfo')).toBeInTheDocument();
   });
 
@@ -56,7 +68,7 @@ describe('storefront shell', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Open menu' }));
 
     const menu = await screen.findByRole('dialog', { name: 'Menu' });
-    expect(within(menu).getByRole('link', { name: 'Home' })).toBeInTheDocument();
+    expect(within(menu).getByRole('link', { name: 'Shop' })).toBeInTheDocument();
 
     fireEvent.click(within(menu).getByRole('button', { name: 'Close' }));
     expect(screen.queryByRole('dialog', { name: 'Menu' })).not.toBeInTheDocument();

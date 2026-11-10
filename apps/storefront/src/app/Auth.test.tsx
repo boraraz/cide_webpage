@@ -50,6 +50,7 @@ describe('storefront account', () => {
     installFetch((url) => {
       if (url.includes('/api/v1/auth/me')) return problem(401, 'Unauthorized');
       if (url.includes('/api/v1/auth/csrf')) return json({ token: 'csrf' });
+      if (url.includes('/api/v1/categories')) return json([]);
       return json({ status: 'Healthy', checks: [] });
     });
   });
@@ -85,6 +86,7 @@ describe('storefront account', () => {
       if (url.includes('/api/v1/auth/me')) return problem(401, 'Unauthorized');
       if (url.includes('/api/v1/auth/csrf')) return json({ token: 'csrf' });
       if (url.includes('/api/v1/auth/login')) return pending;
+      if (url.includes('/api/v1/categories')) return json([]);
       return json({ status: 'Healthy', checks: [] });
     });
     renderAt('/login');
@@ -110,6 +112,7 @@ describe('storefront account', () => {
     installFetch((url) => {
       if (url.includes('/api/v1/auth/me')) return json(customer);
       if (url.includes('/api/v1/auth/csrf')) return json({ token: 'csrf' });
+      if (url.includes('/api/v1/categories')) return json([]);
       return json({ status: 'Healthy', checks: [] });
     });
     renderAt('/account');
@@ -134,13 +137,14 @@ describe('storefront account', () => {
       if (url.includes('/api/v1/auth/csrf')) return json({ token: 'csrf' });
       if (url.includes('/api/v1/auth/me'))
         return signedIn ? json(customer) : problem(401, 'Unauthorized');
+      if (url.includes('/api/v1/categories')) return json([]);
       return json({ status: 'Healthy', checks: [] });
     });
     renderAt('/account');
 
     fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }));
 
-    expect(await screen.findByRole('link', { name: 'Sign in' })).toBeInTheDocument();
+    expect(await screen.findAllByRole('link', { name: 'Sign in' })).not.toHaveLength(0);
     expect(calls()).toContainEqual(expect.stringContaining('/api/v1/auth/logout'));
   });
 });

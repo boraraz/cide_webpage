@@ -7,7 +7,10 @@ using NpgsqlTypes;
 
 namespace Commerce.Infrastructure.Catalog;
 
-internal sealed class CatalogReader(CommerceDbContext database, Microsoft.Extensions.Options.IOptions<CatalogOptions> options) : ICatalogReader
+internal sealed class CatalogReader(
+    CommerceDbContext database,
+    Microsoft.Extensions.Options.IOptions<CatalogOptions> options,
+    DerivativePublisher derivatives) : ICatalogReader
 {
     public async Task<IReadOnlyList<CategoryNode>> CategoryTreeAsync(bool activeOnly, CancellationToken cancellationToken)
     {
@@ -68,13 +71,13 @@ internal sealed class CatalogReader(CommerceDbContext database, Microsoft.Extens
         var products = database.Products.AsNoTracking().Where(product => product.Status == ProductStatus.Active);
         if (!string.IsNullOrWhiteSpace(query.CategorySlug))
         {
-            var ids = await ActiveCategoryIdsAsync(query.CategorySlug, cancellationToken);
-            if (ids is null)
+            var categoryIds = await ActiveCategoryIdsAsync(query.CategorySlug, cancellationToken);
+            if (categoryIds is null)
             {
                 return new PublicProductPageResult(null, true, false);
             }
 
-            products = products.Where(product => product.Categories.Any(link => ids.Contains(link.CategoryId)));
+            products = products.Where(product => product.Categories.Any(link => categoryIds.Contains(link.CategoryId)));
         }
 
         if (!string.IsNullOrWhiteSpace(query.CollectionSlug))
@@ -119,14 +122,31 @@ internal sealed class CatalogReader(CommerceDbContext database, Microsoft.Extens
                     && selection.OptionValue.NormalizedValue == size)));
         }
 
-        if (query.MinPrice is decimal minPrice)
+        if (query.PriceBasis == PriceBasis.From)
         {
-            products = products.Where(product => product.Variants.Any(variant => variant.IsActive && variant.Price >= minPrice));
-        }
+            if (query.MinPrice is decimal minPrice)
+            {
+                products = products.Where(product =>
+                    (product.Variants.Where(variant => variant.IsActive).Min(variant => (decimal?)variant.Price) ?? 0m) >= minPrice);
+            }
 
-        if (query.MaxPrice is decimal maxPrice)
+            if (query.MaxPrice is decimal maxPrice)
+            {
+                products = products.Where(product =>
+                    (product.Variants.Where(variant => variant.IsActive).Min(variant => (decimal?)variant.Price) ?? decimal.MaxValue) <= maxPrice);
+            }
+        }
+        else
         {
-            products = products.Where(product => product.Variants.Any(variant => variant.IsActive && variant.Price <= maxPrice));
+            if (query.MinPrice is decimal minPrice)
+            {
+                products = products.Where(product => product.Variants.Any(variant => variant.IsActive && variant.Price >= minPrice));
+            }
+
+            if (query.MaxPrice is decimal maxPrice)
+            {
+                products = products.Where(product => product.Variants.Any(variant => variant.IsActive && variant.Price <= maxPrice));
+            }
         }
 
         if (query.AvailableOnly)
@@ -150,6 +170,7 @@ internal sealed class CatalogReader(CommerceDbContext database, Microsoft.Extens
             ProductSort.PriceDescending => products
                 .OrderByDescending(product => product.Variants.Where(variant => variant.IsActive).Min(variant => (decimal?)variant.Price) ?? 0m)
                 .ThenBy(product => product.Id),
+            ProductSort.Name => products.OrderBy(product => product.Name).ThenBy(product => product.Id),
             _ => products.OrderByDescending(product => product.PublishedAt).ThenByDescending(product => product.Id),
         };
 
@@ -168,21 +189,139 @@ internal sealed class CatalogReader(CommerceDbContext database, Microsoft.Extens
                 FromPrice = product.Variants.Where(variant => variant.IsActive).Min(variant => (decimal?)variant.Price) ?? 0m,
                 Available = product.Variants.Any(variant => variant.IsActive && variant.Balance != null && variant.Balance.OnHand > variant.Balance.Reserved),
                 PrimaryMediaId = product.Media.Where(media => media.IsPrimary).Select(media => (Guid?)media.Id).FirstOrDefault(),
+                PrimaryAltText = product.Media.Where(media => media.IsPrimary).Select(media => media.AltText).FirstOrDefault(),
+                PrimaryWidth = product.Media.Where(media => media.IsPrimary).Select(media => media.Width).FirstOrDefault(),
+                PrimaryHeight = product.Media.Where(media => media.IsPrimary).Select(media => media.Height).FirstOrDefault(),
+                PrimaryContentType = product.Media.Where(media => media.IsPrimary).Select(media => media.ContentType).FirstOrDefault(),
+                PrimaryObjectKey = product.Media.Where(media => media.IsPrimary).Select(media => media.ObjectKey).FirstOrDefault(),
             })
             .ToListAsync(cancellationToken);
-        var cards = rows.Select(row => new PublicProductCard(
-            row.Id,
-            row.Name,
-            row.Slug,
-            row.ShortDescription,
-            row.Brand,
-            row.IsFeatured,
-            Money.Format(row.FromPrice),
-            Money.Currency,
-            row.Available,
-            row.PrimaryMediaId)).ToArray();
+        var productIds = rows.Select(row => row.Id).ToArray();
+        var variantFacts = productIds.Length == 0
+            ? []
+            : await database.ProductVariants.AsNoTracking()
+                .Where(variant => productIds.Contains(variant.ProductId) && variant.IsActive)
+                .Select(variant => new VariantFact(
+                    variant.ProductId,
+                    variant.Sku,
+                    variant.Price,
+                    variant.CompareAtPrice,
+                    variant.Selections
+                        .Where(selection => selection.OptionValue.Option.NormalizedName == "color")
+                        .Select(selection => selection.OptionValue.Value)
+                        .ToArray()))
+                .ToListAsync(cancellationToken);
+        var cards = new List<PublicProductCard>(rows.Count);
+        foreach (var row in rows)
+        {
+            var facts = variantFacts.Where(fact => fact.ProductId == row.Id).ToArray();
+            var cheapest = facts.OrderBy(fact => fact.Price).ThenBy(fact => fact.Sku, StringComparer.Ordinal).FirstOrDefault();
+            var colors = facts.SelectMany(fact => fact.Colors).Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.OrdinalIgnoreCase).ToArray();
+            var widths = row.PrimaryObjectKey is null ? [] : await derivatives.ReadAsync(row.PrimaryObjectKey, cancellationToken);
+            cards.Add(new PublicProductCard(
+                row.Id,
+                row.Name,
+                row.Slug,
+                row.ShortDescription,
+                row.Brand,
+                row.IsFeatured,
+                Money.Format(row.FromPrice),
+                Money.Currency,
+                row.Available,
+                row.PrimaryMediaId,
+                cheapest?.CompareAtPrice is decimal compareAt ? Money.Format(compareAt) : null,
+                colors,
+                row.PrimaryAltText,
+                row.PrimaryWidth,
+                row.PrimaryHeight,
+                row.PrimaryContentType,
+                row.PrimaryMediaId is Guid mediaId && row.PrimaryContentType is not null
+                    ? MediaDerivativePaths.Sources(CatalogMapper.MediaPath(mediaId), row.PrimaryContentType, row.PrimaryWidth, widths)
+                    : []));
+        }
 
         return new PublicProductPageResult(new ProductPage(cards, query.Page, query.PageSize, total), false, false);
+    }
+
+    public async Task<PublicCatalogFilterResult> PublicFiltersAsync(PublicProductQuery query, CancellationToken cancellationToken)
+    {
+        var products = database.Products.AsNoTracking().Where(product => product.Status == ProductStatus.Active);
+        if (!string.IsNullOrWhiteSpace(query.CategorySlug))
+        {
+            var categoryIds = await ActiveCategoryIdsAsync(query.CategorySlug, cancellationToken);
+            if (categoryIds is null)
+            {
+                return new PublicCatalogFilterResult(null, true, false);
+            }
+
+            products = products.Where(product => product.Categories.Any(link => categoryIds.Contains(link.CategoryId)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.CollectionSlug))
+        {
+            var id = await ResolveAsync(SlugOwner.Collection, query.CollectionSlug, cancellationToken);
+            var collection = id is null
+                ? null
+                : await database.Collections.AsNoTracking().FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
+            if (collection is null || !collection.IsActive)
+            {
+                return new PublicCatalogFilterResult(null, false, true);
+            }
+
+            products = products.Where(product => product.Collections.Any(link => link.CollectionId == collection.Id));
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.Search) && query.Search.Trim().Length >= 2)
+        {
+            var term = query.Search.Trim();
+            products = products.Where(product =>
+                EF.Property<NpgsqlTsVector>(product, "SearchVector").Matches(EF.Functions.PlainToTsQuery("turkish", term)));
+        }
+
+        var choices = await products.SelectMany(product => product.Variants.Where(variant => variant.IsActive).SelectMany(variant => variant.Selections))
+            .Where(selection => selection.OptionValue.Option.NormalizedName == "color" || selection.OptionValue.Option.NormalizedName == "size")
+            .Select(selection => new
+            {
+                selection.OptionValue.Option.NormalizedName,
+                selection.OptionValue.NormalizedValue,
+                selection.OptionValue.Value,
+            })
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        var colors = choices.Where(choice => choice.NormalizedName == "color" && choice.NormalizedValue is not null)
+            .GroupBy(choice => choice.NormalizedValue!)
+            .Select(group => new FilterChoice(group.Key, group.Select(choice => choice.Value).First()))
+            .OrderBy(choice => choice.Label, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        var sizes = choices.Where(choice => choice.NormalizedName == "size" && choice.NormalizedValue is not null)
+            .GroupBy(choice => choice.NormalizedValue!)
+            .Select(group => new FilterChoice(group.Key, group.Select(choice => choice.Value).First()))
+            .OrderBy(choice => choice.Label, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        decimal? minimum;
+        decimal? maximum;
+        if (query.PriceBasis == PriceBasis.From)
+        {
+            var fromPrices = products.Select(product => product.Variants.Where(variant => variant.IsActive).Min(variant => (decimal?)variant.Price));
+            minimum = await fromPrices.MinAsync(cancellationToken);
+            maximum = await fromPrices.MaxAsync(cancellationToken);
+        }
+        else
+        {
+            var prices = products.SelectMany(product => product.Variants.Where(variant => variant.IsActive).Select(variant => (decimal?)variant.Price));
+            minimum = await prices.MinAsync(cancellationToken);
+            maximum = await prices.MaxAsync(cancellationToken);
+        }
+
+        return new PublicCatalogFilterResult(
+            new PublicCatalogFilters(
+                colors,
+                sizes,
+                minimum is decimal low ? Money.Format(low) : null,
+                maximum is decimal high ? Money.Format(high) : null,
+                query.PriceBasis == PriceBasis.From ? "from" : "variant"),
+            false,
+            false);
     }
 
     public async Task<PublicProductDetail?> PublicProductAsync(string slug, CancellationToken cancellationToken)
@@ -201,6 +340,13 @@ internal sealed class CatalogReader(CommerceDbContext database, Microsoft.Extens
 
         var activeVariants = product.Variants.Where(variant => variant.IsActive).ToArray();
         var fromPrice = activeVariants.Length == 0 ? 0m : activeVariants.Min(variant => variant.Price);
+        var threshold = Math.Max(0, options.Value.LowStockThreshold);
+        var mediaWidths = new Dictionary<Guid, IReadOnlyList<int>>();
+        foreach (var media in product.Media)
+        {
+            mediaWidths[media.Id] = await derivatives.ReadAsync(media.ObjectKey, cancellationToken);
+        }
+
         return new PublicProductDetail(
             product.Id,
             product.Name,
@@ -231,8 +377,112 @@ internal sealed class CatalogReader(CommerceDbContext database, Microsoft.Extens
                 variant.Balance is { Available: > 0 },
                 variant.Selections.OrderBy(selection => selection.OptionValue.Option.Position)
                     .Select(selection => new SelectedOptionResponse(selection.OptionValue.Option.Name, selection.OptionValue.Value, selection.OptionValue.Code))
-                    .ToArray())).ToArray(),
-            product.Media.OrderBy(media => media.DisplayOrder).Select(CatalogMapper.Media).ToArray());
+                    .ToArray(),
+                StockPresentation.Label(variant.Balance?.Available ?? 0, threshold))).ToArray(),
+            product.Media.OrderBy(media => media.DisplayOrder).Select(media => CatalogMapper.Media(media, mediaWidths[media.Id])).ToArray());
+    }
+
+    public async Task<IReadOnlyList<PublicProductCard>> RelatedProductsAsync(string slug, int limit, CancellationToken cancellationToken)
+    {
+        var id = await ResolveAsync(SlugOwner.Product, slug, cancellationToken);
+        if (id is null)
+        {
+            return [];
+        }
+
+        var product = await database.Products.AsNoTracking()
+            .Include(item => item.Categories)
+            .Include(item => item.Collections)
+            .FirstOrDefaultAsync(item => item.Id == id && item.Status == ProductStatus.Active, cancellationToken);
+        if (product is null)
+        {
+            return [];
+        }
+
+        var categoryIds = product.Categories.Select(link => link.CategoryId).ToArray();
+        var collectionIds = product.Collections.Select(link => link.CollectionId).ToArray();
+        var wanted = await database.Products.AsNoTracking()
+            .Where(item => item.Status == ProductStatus.Active && item.Id != product.Id)
+            .Select(item => new
+            {
+                item.Id,
+                Score = (collectionIds.Length > 0 && item.Collections.Any(link => collectionIds.Contains(link.CollectionId)) ? 2 : 0)
+                    + (categoryIds.Length > 0 && item.Categories.Any(link => categoryIds.Contains(link.CategoryId)) ? 1 : 0),
+                item.PublishedAt,
+            })
+            .OrderByDescending(item => item.Score)
+            .ThenByDescending(item => item.PublishedAt)
+            .ThenBy(item => item.Id)
+            .Take(limit)
+            .Select(item => item.Id)
+            .ToListAsync(cancellationToken);
+        return await CardsForIdsAsync(wanted, cancellationToken);
+    }
+
+    public async Task<PublicSitemap> PublicSitemapAsync(CancellationToken cancellationToken)
+    {
+        var categories = await database.Categories.AsNoTracking().Where(category => category.IsActive).OrderBy(category => category.Slug).Select(category => category.Slug).ToListAsync(cancellationToken);
+        var collections = await database.Collections.AsNoTracking().Where(collection => collection.IsActive).OrderBy(collection => collection.Slug).Select(collection => collection.Slug).ToListAsync(cancellationToken);
+        var products = await database.Products.AsNoTracking().Where(product => product.Status == ProductStatus.Active).OrderBy(product => product.Slug).Select(product => product.Slug).ToListAsync(cancellationToken);
+        return new PublicSitemap(categories, collections, products);
+    }
+
+    private async Task<IReadOnlyList<PublicProductCard>> CardsForIdsAsync(IReadOnlyList<Guid> ids, CancellationToken cancellationToken)
+    {
+        if (ids.Count == 0)
+        {
+            return [];
+        }
+
+        var rows = await database.Products.AsNoTracking()
+            .Where(product => ids.Contains(product.Id))
+            .Select(product => new
+            {
+                product.Id,
+                product.Name,
+                product.Slug,
+                product.ShortDescription,
+                product.Brand,
+                product.IsFeatured,
+                FromPrice = product.Variants.Where(variant => variant.IsActive).Min(variant => (decimal?)variant.Price) ?? 0m,
+                Available = product.Variants.Any(variant => variant.IsActive && variant.Balance != null && variant.Balance.OnHand > variant.Balance.Reserved),
+                PrimaryMediaId = product.Media.Where(media => media.IsPrimary).Select(media => (Guid?)media.Id).FirstOrDefault(),
+                PrimaryAltText = product.Media.Where(media => media.IsPrimary).Select(media => media.AltText).FirstOrDefault(),
+                PrimaryWidth = product.Media.Where(media => media.IsPrimary).Select(media => media.Width).FirstOrDefault(),
+                PrimaryHeight = product.Media.Where(media => media.IsPrimary).Select(media => media.Height).FirstOrDefault(),
+                PrimaryContentType = product.Media.Where(media => media.IsPrimary).Select(media => media.ContentType).FirstOrDefault(),
+                PrimaryObjectKey = product.Media.Where(media => media.IsPrimary).Select(media => media.ObjectKey).FirstOrDefault(),
+            })
+            .ToListAsync(cancellationToken);
+        var order = ids.Select((id, index) => (id, index)).ToDictionary(item => item.id, item => item.index);
+        rows.Sort((left, right) => order[left.Id].CompareTo(order[right.Id]));
+        var facts = await database.ProductVariants.AsNoTracking()
+            .Where(variant => ids.Contains(variant.ProductId) && variant.IsActive)
+            .Select(variant => new VariantFact(
+                variant.ProductId,
+                variant.Sku,
+                variant.Price,
+                variant.CompareAtPrice,
+                variant.Selections.Where(selection => selection.OptionValue.Option.NormalizedName == "color").Select(selection => selection.OptionValue.Value).ToArray()))
+            .ToListAsync(cancellationToken);
+        var cards = new List<PublicProductCard>(rows.Count);
+        foreach (var row in rows)
+        {
+            var matches = facts.Where(fact => fact.ProductId == row.Id).ToArray();
+            var cheapest = matches.OrderBy(fact => fact.Price).ThenBy(fact => fact.Sku, StringComparer.Ordinal).FirstOrDefault();
+            var colors = matches.SelectMany(fact => fact.Colors).Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.OrdinalIgnoreCase).ToArray();
+            var widths = row.PrimaryObjectKey is null ? [] : await derivatives.ReadAsync(row.PrimaryObjectKey, cancellationToken);
+            cards.Add(new PublicProductCard(
+                row.Id, row.Name, row.Slug, row.ShortDescription, row.Brand, row.IsFeatured,
+                Money.Format(row.FromPrice), Money.Currency, row.Available, row.PrimaryMediaId,
+                cheapest?.CompareAtPrice is decimal compareAt ? Money.Format(compareAt) : null,
+                colors, row.PrimaryAltText, row.PrimaryWidth, row.PrimaryHeight, row.PrimaryContentType,
+                row.PrimaryMediaId is Guid mediaId && row.PrimaryContentType is not null
+                    ? MediaDerivativePaths.Sources(CatalogMapper.MediaPath(mediaId), row.PrimaryContentType, row.PrimaryWidth, widths)
+                    : []));
+        }
+
+        return cards;
     }
 
     public async Task<MediaResponse?> PublicMediaAsync(Guid id, CancellationToken cancellationToken)
@@ -589,6 +839,8 @@ internal sealed class CatalogReader(CommerceDbContext database, Microsoft.Extens
             .Select(Node)
             .ToArray();
     }
+
+    private sealed record VariantFact(Guid ProductId, string Sku, decimal Price, decimal? CompareAtPrice, string[] Colors);
 
     private static IEnumerable<CategoryNode> Flatten(CategoryNode node)
     {

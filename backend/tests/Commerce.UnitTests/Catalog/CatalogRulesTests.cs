@@ -65,7 +65,7 @@ public sealed class CatalogRulesTests
     {
         var storage = new RecordingStorage();
         var store = new ThrowingStore();
-        var service = new MediaService(store, storage, TimeProvider.System);
+        var service = new MediaService(store, storage, TimeProvider.System, new DerivativePublisher(storage, new NoDerivatives(), Microsoft.Extensions.Logging.Abstractions.NullLogger<DerivativePublisher>.Instance));
         var productId = Guid.CreateVersion7();
         store.Product = new Product { Id = productId, Name = "Tee", Slug = "tee" };
 
@@ -172,5 +172,10 @@ public sealed class CatalogRulesTests
         public Task<StockAdjustmentOutcome> AdjustStockAsync(StockAdjustment adjustment, CancellationToken cancellationToken) => throw new NotSupportedException();
 
         public Task<ProductMedia?> FindMediaAsync(Guid id, CancellationToken cancellationToken) => throw new NotSupportedException();
+    }
+
+    private sealed class NoDerivatives : IImageDerivatives
+    {
+        public IReadOnlyList<ImageDerivative> Create(ReadOnlyMemory<byte> content, int knownWidth) => [];
     }
 }

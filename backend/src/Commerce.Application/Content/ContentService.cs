@@ -6,7 +6,7 @@ using Commerce.Domain.Content;
 
 namespace Commerce.Application.Content;
 
-public sealed class ContentService(IContentStore store, IObjectStorage storage, TimeProvider time)
+public sealed class ContentService(IContentStore store, IObjectStorage storage, TimeProvider time, DerivativePublisher derivatives)
 {
     public async Task<HomepageDraftResponse> GetDraftAsync(CancellationToken cancellationToken)
     {
@@ -172,19 +172,21 @@ public sealed class ContentService(IContentStore store, IObjectStorage storage, 
         };
         media.ObjectKey = $"content/{media.Id}.{ImageSignature.ExtensionFor(contentType)}";
         await storage.PutAsync(media.ObjectKey, content, contentType, cancellationToken);
+        await derivatives.PublishAsync(media.ObjectKey, content, media.Width, cancellationToken);
         try
         {
             await store.AddMediaAsync(media, cancellationToken);
-            return CatalogResult<ContentMediaResponse>.Ok(Map(media, admin: true));
+            var widths = await derivatives.ReadAsync(media.ObjectKey, cancellationToken);
+            return CatalogResult<ContentMediaResponse>.Ok(Map(media, admin: true, widths));
         }
         catch
         {
-            await storage.DeleteAsync(media.ObjectKey, cancellationToken);
+            await derivatives.DeleteAllAsync(media.ObjectKey, cancellationToken);
             throw;
         }
     }
 
-    public async Task<StoredObject?> OpenAsync(Guid id, bool publishedOnly, CancellationToken cancellationToken)
+    public async Task<MediaDelivery?> OpenAsync(Guid id, bool publishedOnly, int? width, CancellationToken cancellationToken)
     {
         var media = await store.FindMediaAsync(id, cancellationToken);
         if (media is null)
@@ -197,7 +199,18 @@ public sealed class ContentService(IContentStore store, IObjectStorage storage, 
             return null;
         }
 
-        return await storage.OpenAsync(media.ObjectKey, cancellationToken);
+        if (width is int requested && !MediaDerivativePaths.IsTarget(requested))
+        {
+            return null;
+        }
+
+        if (!publishedOnly)
+        {
+            var original = await storage.OpenAsync(media.ObjectKey, cancellationToken);
+            return original is null ? null : new MediaDelivery(original, "private, no-store");
+        }
+
+        return await derivatives.OpenAsync(media.ObjectKey, width, cancellationToken);
     }
 
     private async Task<HomepagePreviewResponse> ProjectAsync(
@@ -254,13 +267,19 @@ public sealed class ContentService(IContentStore store, IObjectStorage storage, 
                 else
                 {
                     config.Remove("mediaId");
-                    config["sources"] = new JsonArray(
-                        new JsonObject
+                    var widths = await derivatives.ReadAsync(media.ObjectKey, cancellationToken);
+                    var sources = new JsonArray();
+                    foreach (var source in MediaDerivativePaths.Sources($"/api/v1/content/media/{media.Id}", media.ContentType, media.Width, widths))
+                    {
+                        sources.Add(new JsonObject
                         {
-                            ["url"] = $"/api/v1/content/media/{media.Id}",
-                            ["width"] = media.Width,
-                            ["contentType"] = media.ContentType,
+                            ["url"] = source.Url,
+                            ["width"] = source.Width,
+                            ["contentType"] = source.MimeType,
                         });
+                    }
+
+                    config["sources"] = sources;
                     config["altText"] = media.AltText;
                 }
             }
@@ -314,13 +333,17 @@ public sealed class ContentService(IContentStore store, IObjectStorage storage, 
         return new HomepagePreviewResponse(publishedAt, projected, issues);
     }
 
-    private static ContentMediaResponse Map(ContentMedia media, bool admin) => new(
-        media.Id,
-        media.AltText,
-        media.ContentType,
-        media.ByteSize,
-        media.Width,
-        media.Height,
-        admin ? $"/api/v1/admin/content/media/{media.Id}" : $"/api/v1/content/media/{media.Id}",
-        [new MediaSource(admin ? $"/api/v1/admin/content/media/{media.Id}" : $"/api/v1/content/media/{media.Id}", media.Width, media.ContentType)]);
+    private static ContentMediaResponse Map(ContentMedia media, bool admin, IReadOnlyList<int>? derivativeWidths = null)
+    {
+        var path = admin ? $"/api/v1/admin/content/media/{media.Id}" : $"/api/v1/content/media/{media.Id}";
+        return new ContentMediaResponse(
+            media.Id,
+            media.AltText,
+            media.ContentType,
+            media.ByteSize,
+            media.Width,
+            media.Height,
+            path,
+            MediaDerivativePaths.Sources(path, media.ContentType, media.Width, derivativeWidths ?? []));
+    }
 }

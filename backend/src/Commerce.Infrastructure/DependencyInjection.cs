@@ -67,6 +67,8 @@ public static class DependencyInjection
         services.AddScoped<ContentService>();
         services.AddScoped<ICatalogReader, CatalogReader>();
         services.AddScoped<IObjectStorage, S3ObjectStorage>();
+        services.AddSingleton<IImageDerivatives, SkiaImageDerivatives>();
+        services.AddScoped<DerivativePublisher>();
         services.AddScoped<CatalogSeeder>();
         services.AddHostedService<CatalogStartupService>();
         services.AddOptions<CatalogOptions>()

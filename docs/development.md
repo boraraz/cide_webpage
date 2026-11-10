@@ -46,22 +46,25 @@ Then:
 2. Open <http://localhost:5174> (admin). Anonymous visitors land on the sign-in page. A customer
    session is refused with **Access denied**. An administrator reaches the dashboard.
 3. Run `curl http://localhost:5080/api/v1/health/ready`. It should return `"status":"Healthy"`.
+4. Publish the homepage in the admin, then reload <http://localhost:5173>. Shop is
+   <http://localhost:5173/shop>. Listings send `priceBasis=from`. The storefront is client-rendered.
 
 ## Local URLs and ports
 
-| Service                | URL                                                         | Notes                                       |
-| ---------------------- | ----------------------------------------------------------- | ------------------------------------------- |
-| Storefront             | <http://localhost:5173>                                     | Vite dev server (`strictPort`)              |
-| Admin                  | <http://localhost:5174>                                     | Sign-in required. Not a public site.        |
-| API                    | <http://localhost:5080>                                     | `dotnet run` / `dotnet watch`               |
-| API liveness           | <http://localhost:5080/api/v1/health>                       |                                             |
-| API readiness          | <http://localhost:5080/api/v1/health/ready>                 | Checks database and object storage          |
-| OpenAPI document       | <http://localhost:5080/openapi/v1.json>                     | Development only                            |
-| API reference (Scalar) | <http://localhost:5080/scalar>                              | Development only                            |
-| PostgreSQL             | `localhost:5432` (`POSTGRES_PORT`)                          | Bound to 127.0.0.1                          |
-| Object storage S3 API  | <http://localhost:9000> (`S3_API_PORT`)                     | RustFS, bound to 127.0.0.1                  |
-| Object storage console | <http://localhost:9001/rustfs/console/> (`S3_CONSOLE_PORT`) | Log in with `S3_ACCESS_KEY`/`S3_SECRET_KEY` |
-| Mailpit                | <http://localhost:8025> (`MAILPIT_UI_PORT`)                 | Local mailbox. SMTP is `localhost:1025`.    |
+| Service                | URL                                                         | Notes                                        |
+| ---------------------- | ----------------------------------------------------------- | -------------------------------------------- |
+| Storefront             | <http://localhost:5173>                                     | Vite dev server (`strictPort`)               |
+| Admin                  | <http://localhost:5174>                                     | Sign-in required. Not a public site.         |
+| API                    | <http://localhost:5080>                                     | `dotnet run` / `dotnet watch`                |
+| Sitemap                | <http://localhost:5080/api/v1/sitemap.xml>                  | Active categories, collections, and products |
+| API liveness           | <http://localhost:5080/api/v1/health>                       |                                              |
+| API readiness          | <http://localhost:5080/api/v1/health/ready>                 | Checks database and object storage           |
+| OpenAPI document       | <http://localhost:5080/openapi/v1.json>                     | Development only                             |
+| API reference (Scalar) | <http://localhost:5080/scalar>                              | Development only                             |
+| PostgreSQL             | `localhost:5432` (`POSTGRES_PORT`)                          | Bound to 127.0.0.1                           |
+| Object storage S3 API  | <http://localhost:9000> (`S3_API_PORT`)                     | RustFS, bound to 127.0.0.1                   |
+| Object storage console | <http://localhost:9001/rustfs/console/> (`S3_CONSOLE_PORT`) | Log in with `S3_ACCESS_KEY`/`S3_SECRET_KEY`  |
+| Mailpit                | <http://localhost:8025> (`MAILPIT_UI_PORT`)                 | Local mailbox. SMTP is `localhost:1025`.     |
 
 Production builds served with `vite preview` use ports 4173 (storefront) and 4174 (admin).
 

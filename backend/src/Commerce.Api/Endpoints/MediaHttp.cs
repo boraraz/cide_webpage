@@ -11,6 +11,9 @@ internal static class MediaHttp
     public static IResult File(StoredObject stored, bool published) =>
         new CachedFileResult(stored.Content, stored.ContentType, published ? PublicCache : PrivateCache);
 
+    public static IResult File(MediaDelivery delivery) =>
+        new CachedFileResult(delivery.Object.Content, delivery.Object.ContentType, delivery.CacheControl);
+
     private sealed class CachedFileResult(byte[] content, string contentType, string cacheControl) : IResult
     {
         public Task ExecuteAsync(HttpContext httpContext)

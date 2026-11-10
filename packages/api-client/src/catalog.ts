@@ -15,7 +15,6 @@ import type {
   OptionValueResponse,
   OptionValueWriteRequest,
   OptionWriteRequest,
-  ProductPage,
   ProductResponse,
   ProductUpdateRequest,
   ProductWriteRequest,
@@ -29,7 +28,9 @@ import type { ApiClient, QueryValue } from './client';
 import type { CsrfMemory } from './csrf';
 import { isApiError } from './errors';
 
-export type ProductSort = 'newest' | 'price_asc' | 'price_desc';
+export type ProductSort = 'newest' | 'price_asc' | 'price_desc' | 'name';
+
+export type PriceBasis = 'variant' | 'from';
 
 /** Prices stay decimal strings such as `"1299.00"`. Callers must not pass numbers. */
 export interface ProductListQuery {
@@ -44,6 +45,53 @@ export interface ProductListQuery {
   available?: boolean;
   q?: string;
   sort?: ProductSort;
+  priceBasis?: PriceBasis;
+}
+
+export interface CatalogMediaSource {
+  url: string;
+  width?: number | null;
+  mimeType?: string | null;
+}
+
+export interface PublicCatalogCard {
+  id: string;
+  name: string;
+  slug: string;
+  shortDescription: string;
+  brand: string | null;
+  isFeatured: boolean;
+  fromPrice: string;
+  currency: string;
+  available: boolean;
+  primaryMediaId: string | null;
+  compareAtPrice: string | null;
+  colors: string[];
+  primaryAltText: string | null;
+  primaryWidth: number | null;
+  primaryHeight: number | null;
+  primaryContentType: string | null;
+  primarySources: CatalogMediaSource[];
+}
+
+export interface PublicCatalogPage {
+  items: PublicCatalogCard[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
+
+export interface FilterChoice {
+  value: string;
+  label: string;
+}
+
+export interface PublicCatalogFilters {
+  colors: FilterChoice[];
+  sizes: FilterChoice[];
+  minPrice: string | null;
+  maxPrice: string | null;
+  priceBasis: PriceBasis;
 }
 
 export interface AdminProductQuery {
@@ -138,6 +186,7 @@ export function productListQuery(query: ProductListQuery): Record<string, QueryV
     available: query.available,
     q: query.q,
     sort: query.sort,
+    priceBasis: query.priceBasis,
   };
 }
 
@@ -146,8 +195,10 @@ export interface CatalogApi {
   category: (slug: string) => Promise<CategoryNode>;
   collections: () => Promise<CollectionResponse[]>;
   collection: (slug: string) => Promise<CollectionResponse>;
-  products: (query?: ProductListQuery) => Promise<ProductPage>;
+  products: (query?: ProductListQuery) => Promise<PublicCatalogPage>;
+  filters: (query?: ProductListQuery) => Promise<PublicCatalogFilters>;
   product: (slug: string) => Promise<PublicProductDetail>;
+  relatedProducts: (slug: string, limit?: number) => Promise<PublicCatalogCard[]>;
   adminCategories: () => Promise<CategoryNode[]>;
   createCategory: (body: CategoryWriteRequest) => Promise<CategoryResponse>;
   updateCategory: (id: string, body: CategoryUpdateRequest) => Promise<CategoryResponse>;
@@ -251,9 +302,17 @@ export function createCatalogApi(client: ApiClient, csrf: CsrfMemory): CatalogAp
     collection: (slug) =>
       client.get<CollectionResponse>(`/api/v1/collections/${encodeURIComponent(slug)}`),
     products: (query = {}) =>
-      client.get<ProductPage>('/api/v1/products', { query: productListQuery(query) }),
+      client.get<PublicCatalogPage>('/api/v1/products', { query: productListQuery(query) }),
+    filters: (query = {}) =>
+      client.get<PublicCatalogFilters>('/api/v1/products/filters', {
+        query: productListQuery(query),
+      }),
     product: (slug) =>
       client.get<PublicProductDetail>(`/api/v1/products/${encodeURIComponent(slug)}`),
+    relatedProducts: (slug, limit = 8) =>
+      client.get<PublicCatalogCard[]>(`/api/v1/products/${encodeURIComponent(slug)}/related`, {
+        query: { limit },
+      }),
     adminCategories: () => client.get<CategoryNode[]>('/api/v1/admin/categories'),
     createCategory: (body) => send('post', '/api/v1/admin/categories', body),
     updateCategory: (id, body) => send('patch', `/api/v1/admin/categories/${id}`, body),

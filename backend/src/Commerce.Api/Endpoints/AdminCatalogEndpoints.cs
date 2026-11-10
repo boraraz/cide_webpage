@@ -329,7 +329,7 @@ public static class AdminCatalogEndpoints
     private static async Task<IResult> OpenMediaAsync(Guid id, MediaService media, CancellationToken cancellationToken)
     {
         var stored = await media.OpenAdminAsync(id, cancellationToken);
-        return stored is null ? Results.NotFound() : MediaHttp.File(stored, published: false);
+        return stored is null ? Results.NotFound() : MediaHttp.File(stored);
     }
 
     private static async Task<IResult> UpdateMediaAsync(Guid id, MediaUpdateRequest request, MediaService media, CancellationToken cancellationToken) =>

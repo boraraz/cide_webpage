@@ -47,7 +47,7 @@ public static class CatalogMapper
             .ToArray(),
         product.Options.OrderBy(option => option.Position).ThenBy(option => option.Name).Select(option => Option(option, product.Version)).ToArray(),
         product.Variants.OrderBy(variant => variant.Sku).Select(variant => Variant(variant, includeStock, product.Version)).ToArray(),
-        product.Media.OrderBy(media => media.DisplayOrder).ThenBy(media => media.CreatedAt).Select(Media).ToArray(),
+        product.Media.OrderBy(media => media.DisplayOrder).ThenBy(media => media.CreatedAt).Select(media => Media(media)).ToArray(),
         product.Version);
 
     public static MovementResponse Movement(InventoryMovement movement) => new(
@@ -64,8 +64,8 @@ public static class CatalogMapper
 
     public static string MediaPath(Guid id) => $"/api/v1/media/{id}";
 
-    public static IReadOnlyList<MediaSource> Sources(ProductMedia media) =>
-        [new(MediaPath(media.Id), media.Width, media.ContentType)];
+    public static IReadOnlyList<MediaSource> Sources(ProductMedia media, IReadOnlyList<int>? derivativeWidths = null) =>
+        MediaDerivativePaths.Sources(MediaPath(media.Id), media.ContentType, media.Width, derivativeWidths ?? []);
 
     private static OptionResponse Option(ProductOption option, int productVersion) => new(
         option.Id,
@@ -105,7 +105,7 @@ public static class CatalogMapper
                 selection.OptionValue.Code))
             .ToArray();
 
-    public static MediaResponse Media(ProductMedia media) => new(
+    public static MediaResponse Media(ProductMedia media, IReadOnlyList<int>? derivativeWidths = null) => new(
         media.Id,
         media.VariantId,
         media.AltText,
@@ -116,5 +116,5 @@ public static class CatalogMapper
         MediaPath(media.Id),
         media.Width,
         media.Height,
-        Sources(media));
+        Sources(media, derivativeWidths));
 }

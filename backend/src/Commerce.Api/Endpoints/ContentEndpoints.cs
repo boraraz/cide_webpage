@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Commerce.Api.Auth;
 using Commerce.Api.Catalog;
+using Commerce.Application.Catalog;
 using Commerce.Application.Content;
 using Commerce.Domain.Catalog;
 using Commerce.Domain.Identity;
@@ -19,11 +20,16 @@ public static class ContentEndpoints
             return Results.Ok(await content.PublicAsync(cancellationToken));
         }).WithTags("Content").WithName("GetPublicHomepage").Produces<PublicHomepageResponse>();
 
-        app.MapGet("/api/v1/content/media/{id:guid}", async (Guid id, ContentService content, CancellationToken cancellationToken) =>
-        {
-            var stored = await content.OpenAsync(id, publishedOnly: true, cancellationToken);
-            return stored is null ? Results.NotFound() : MediaHttp.File(stored, published: true);
-        }).WithTags("Content").WithName("GetPublicContentMedia");
+        app.MapGet("/api/v1/content/media/{id:guid}", async (Guid id, int? w, ContentService content, CancellationToken cancellationToken) =>
+            {
+                if (w is int requested && !MediaDerivativePaths.IsTarget(requested))
+                {
+                    return Results.NotFound();
+                }
+
+                var stored = await content.OpenAsync(id, publishedOnly: true, w, cancellationToken);
+                return stored is null ? Results.NotFound() : MediaHttp.File(stored);
+            }).WithTags("Content").WithName("GetPublicContentMedia");
 
         var admin = app.MapGroup("/api/v1/admin/content").WithTags("Admin content").RequireAuthorization(RoleNames.Admin);
         admin.MapGet("/homepage", async (ContentService content, CancellationToken cancellationToken) =>
@@ -49,8 +55,8 @@ public static class ContentEndpoints
             .Produces<ContentMediaResponse>(StatusCodes.Status201Created);
         admin.MapGet("/media/{id:guid}", async (Guid id, ContentService content, CancellationToken cancellationToken) =>
         {
-            var stored = await content.OpenAsync(id, publishedOnly: false, cancellationToken);
-            return stored is null ? Results.NotFound() : MediaHttp.File(stored, published: false);
+            var stored = await content.OpenAsync(id, publishedOnly: false, width: null, cancellationToken);
+            return stored is null ? Results.NotFound() : MediaHttp.File(stored);
         }).WithName("GetAdminContentMedia");
         return app;
     }

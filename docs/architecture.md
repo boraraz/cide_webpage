@@ -34,7 +34,7 @@ flowchart LR
 
 | Component                 | Responsibility                                                                                                      |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `apps/storefront`         | Customer shop. Account pages exist. Catalog listing and checkout are not built.                                     |
+| `apps/storefront`         | Customer shop. Account, catalog browsing, and the published homepage. Checkout is not built.                        |
 | `apps/admin`              | Back office. Sign-in is required. Catalog navigation stays disabled. Not a public site.                             |
 | `packages/ui`             | Shared design tokens plus primitives (`Button`, `TextField`, `Drawer`, and others).                                 |
 | `packages/api-client`     | Typed `fetch` wrapper, in-memory CSRF token, and identity, catalog and homepage calls. Never stores session tokens. |
@@ -302,7 +302,11 @@ Removing it makes the public GET 404. The admin GET stays available. Objects are
   `content/{mediaId}.{ext}`. The admin origin loads unpublished images with a credentialed fetch
   and an object URL, because a cross-origin `<img>` does not send the session cookie. Phase 5 will
   add private WebP siblings at 480, 960 and 1600 pixels and a `w` query on the same GET routes.
-  Phase 4 returns one original source.
+  Phase 5 adds private WebP siblings at 480, 960 and 1600 pixels with SkiaSharp 4.155.0 (MIT), plus the Linux native asset package so a Linux host can encode. ImageSharp is not used: 2.1 is outside security support, and current releases need a Six Labors license key. A derivative is listed in `sources` only after its object is stored. `GET` with an allowed missing `w` returns the original for five minutes. The storefront builds `srcset` only from advertised sources. Unknown dimensions and failed encodes keep the original and add no sibling.
+
+  The storefront is a Vite client-rendered app. Crawlers that do not run JavaScript receive the shell, `robots.txt`, and the API sitemap, not product HTML. Page metadata is a plain object applied by one browser function so a later server renderer can replace that function. Server rendering is a production-readiness decision and is not part of Phase 5.
+
+  Public `minPrice` and `maxPrice` still match any active variant. `priceBasis=from` applies both bounds to the displayed minimum active price. The storefront sends `from` for listings and facets.
 
 ## Future module boundaries
 

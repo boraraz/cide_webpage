@@ -3,6 +3,7 @@ import { Button } from '@commerce/ui';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { content } from '@/lib/api';
+import { env } from '@/lib/env';
 
 export default function HomepagePreviewPage() {
   const preview = useQuery({ queryKey: ['homepage-preview'], queryFn: () => content.preview() });
@@ -32,7 +33,11 @@ export default function HomepagePreviewPage() {
       <div className="overflow-x-auto border border-border bg-background p-4">
         <div style={{ width }} className="mx-auto">
           {preview.data ? (
-            <HomepageView blocks={preview.data.blocks} issues={preview.data.issues} />
+            <HomepageView
+              blocks={preview.data.blocks}
+              issues={preview.data.issues}
+              resolveSrc={(url) => new URL(url, env.VITE_API_BASE_URL).toString()}
+            />
           ) : null}
         </div>
       </div>

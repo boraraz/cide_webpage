@@ -11,9 +11,15 @@ export {
   type MovementHistoryQuery,
   type VariantBulkItem,
   type MediaUpload,
+  type FilterChoice,
+  type PriceBasis,
   type ProductListQuery,
   type ProductSort,
+  type PublicCatalogCard,
+  type PublicCatalogFilters,
+  type PublicCatalogPage,
 } from './catalog';
+export type { CategoryNode, PublicProductDetail } from '@commerce/shared-types';
 export {
   createContentApi,
   type ContentApi,

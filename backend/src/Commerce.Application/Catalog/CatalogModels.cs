@@ -7,6 +7,13 @@ public enum ProductSort
     Newest,
     PriceAscending,
     PriceDescending,
+    Name,
+}
+
+public enum PriceBasis
+{
+    Variant,
+    From,
 }
 
 public sealed record PublicProductQuery(
@@ -20,7 +27,8 @@ public sealed record PublicProductQuery(
     decimal? MaxPrice,
     bool AvailableOnly,
     string? Search,
-    ProductSort Sort);
+    ProductSort Sort,
+    PriceBasis PriceBasis);
 
 public sealed record CategoryResponse(
     Guid Id,
@@ -82,7 +90,8 @@ public sealed record PublicVariantResponse(
     string? CompareAtPrice,
     string Currency,
     bool Available,
-    IReadOnlyList<SelectedOptionResponse> Options);
+    IReadOnlyList<SelectedOptionResponse> Options,
+    string Availability);
 
 public sealed record MediaSource(string Url, int? Width, string MimeType);
 
@@ -128,11 +137,34 @@ public sealed record PublicProductCard(
     string FromPrice,
     string Currency,
     bool Available,
-    Guid? PrimaryMediaId);
+    Guid? PrimaryMediaId,
+    string? CompareAtPrice,
+    IReadOnlyList<string> Colors,
+    string? PrimaryAltText,
+    int? PrimaryWidth,
+    int? PrimaryHeight,
+    string? PrimaryContentType,
+    IReadOnlyList<MediaSource> PrimarySources);
 
 public sealed record ProductPage(IReadOnlyList<PublicProductCard> Items, int Page, int PageSize, int Total);
 
 public sealed record PublicProductPageResult(ProductPage? Page, bool CategoryMissing, bool CollectionMissing);
+
+public sealed record FilterChoice(string Value, string Label);
+
+public sealed record PublicCatalogFilters(
+    IReadOnlyList<FilterChoice> Colors,
+    IReadOnlyList<FilterChoice> Sizes,
+    string? MinPrice,
+    string? MaxPrice,
+    string PriceBasis);
+
+public sealed record PublicCatalogFilterResult(PublicCatalogFilters? Filters, bool CategoryMissing, bool CollectionMissing);
+
+public sealed record PublicSitemap(
+    IReadOnlyList<string> Categories,
+    IReadOnlyList<string> Collections,
+    IReadOnlyList<string> Products);
 
 public sealed record PublicProductDetail(
     Guid Id,
@@ -234,6 +266,8 @@ public sealed record MovementResponse(
     DateTimeOffset CreatedAt);
 
 public sealed record StoredObject(byte[] Content, string ContentType);
+
+public sealed record MediaDelivery(StoredObject Object, string CacheControl);
 
 public sealed record NewVariant(
     string? Sku,

@@ -2,7 +2,7 @@ using Commerce.Domain.Catalog;
 
 namespace Commerce.Application.Catalog;
 
-public sealed class MediaService(ICatalogStore store, IObjectStorage storage, TimeProvider time)
+public sealed class MediaService(ICatalogStore store, IObjectStorage storage, TimeProvider time, DerivativePublisher derivatives)
 {
     public async Task<CatalogResult<MediaResponse>> UploadAsync(
         Guid productId,
@@ -65,6 +65,7 @@ public sealed class MediaService(ICatalogStore store, IObjectStorage storage, Ti
         media.ObjectKey = $"catalog/{product.Id}/{media.Id}.{ImageSignature.ExtensionFor(contentType)}";
 
         await storage.PutAsync(media.ObjectKey, content, contentType, cancellationToken);
+        await derivatives.PublishAsync(media.ObjectKey, content, media.Width, cancellationToken);
         try
         {
             if (media.IsPrimary)
@@ -74,11 +75,12 @@ public sealed class MediaService(ICatalogStore store, IObjectStorage storage, Ti
 
             product.Media.Add(media);
             store.Add(media);
+            var widths = await derivatives.ReadAsync(media.ObjectKey, cancellationToken);
             var saved = await CatalogSupport.SaveProductAsync(
-                store, product, expectedVersion, now, () => CatalogMapper.Media(media), cancellationToken);
+                store, product, expectedVersion, now, () => CatalogMapper.Media(media, widths), cancellationToken);
             if (!saved.Succeeded)
             {
-                await storage.DeleteAsync(media.ObjectKey, cancellationToken);
+                await derivatives.DeleteAllAsync(media.ObjectKey, cancellationToken);
             }
 
             return saved;
@@ -86,13 +88,13 @@ public sealed class MediaService(ICatalogStore store, IObjectStorage storage, Ti
         catch (CatalogConflictException conflict)
         {
             store.Abandon();
-            await storage.DeleteAsync(media.ObjectKey, cancellationToken);
+            await derivatives.DeleteAllAsync(media.ObjectKey, cancellationToken);
             return CatalogResult<MediaResponse>.Conflict(conflict.Field, conflict.Message, conflict.Status);
         }
         catch
         {
             store.Abandon();
-            await storage.DeleteAsync(media.ObjectKey, cancellationToken);
+            await derivatives.DeleteAllAsync(media.ObjectKey, cancellationToken);
             throw;
         }
     }
@@ -230,29 +232,16 @@ public sealed class MediaService(ICatalogStore store, IObjectStorage storage, Ti
         var saved = await CatalogSupport.SaveProductAsync(store, product, expectedVersion, time.GetUtcNow(), () => true, cancellationToken);
         if (saved.Succeeded)
         {
-            await storage.DeleteAsync(key, cancellationToken);
+            await derivatives.DeleteAllAsync(key, cancellationToken);
         }
 
         return saved;
     }
 
-    public async Task<StoredObject?> OpenPublicAsync(Guid id, CancellationToken cancellationToken)
-    {
-        var media = await store.FindMediaAsync(id, cancellationToken);
-        if (media is null || media.Product.Status != ProductStatus.Active)
-        {
-            return null;
-        }
+    public Task<MediaDelivery?> OpenPublicAsync(Guid id, int? width, CancellationToken cancellationToken) =>
+        OpenAsync(id, width, publishedOnly: true, cancellationToken);
 
-        if (media.Variant is { IsActive: false })
-        {
-            return null;
-        }
-
-        return await storage.OpenAsync(media.ObjectKey, cancellationToken);
-    }
-
-    public async Task<StoredObject?> OpenAdminAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<MediaDelivery?> OpenAdminAsync(Guid id, CancellationToken cancellationToken)
     {
         var media = await store.FindMediaAsync(id, cancellationToken);
         if (media is null)
@@ -260,6 +249,28 @@ public sealed class MediaService(ICatalogStore store, IObjectStorage storage, Ti
             return null;
         }
 
-        return await storage.OpenAsync(media.ObjectKey, cancellationToken);
+        var original = await storage.OpenAsync(media.ObjectKey, cancellationToken);
+        return original is null ? null : new MediaDelivery(original, "private, no-store");
+    }
+
+    private async Task<MediaDelivery?> OpenAsync(Guid id, int? width, bool publishedOnly, CancellationToken cancellationToken)
+    {
+        var media = await store.FindMediaAsync(id, cancellationToken);
+        if (media is null)
+        {
+            return null;
+        }
+
+        if (publishedOnly && (media.Product.Status != ProductStatus.Active || media.Variant is { IsActive: false }))
+        {
+            return null;
+        }
+
+        if (width is int requested && !MediaDerivativePaths.IsTarget(requested))
+        {
+            return null;
+        }
+
+        return await derivatives.OpenAsync(media.ObjectKey, width, cancellationToken);
     }
 }

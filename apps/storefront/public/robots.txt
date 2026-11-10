@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# The catalog sitemap is served by the API at GET /api/v1/sitemap.xml.
+# Set this Sitemap directive to that absolute URL when the public host is known.

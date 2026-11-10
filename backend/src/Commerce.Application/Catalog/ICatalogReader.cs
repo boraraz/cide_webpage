@@ -12,7 +12,13 @@ public interface ICatalogReader
 
     Task<PublicProductPageResult> PublicProductsAsync(PublicProductQuery query, CancellationToken cancellationToken);
 
+    Task<PublicCatalogFilterResult> PublicFiltersAsync(PublicProductQuery query, CancellationToken cancellationToken);
+
     Task<PublicProductDetail?> PublicProductAsync(string slug, CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<PublicProductCard>> RelatedProductsAsync(string slug, int limit, CancellationToken cancellationToken);
+
+    Task<PublicSitemap> PublicSitemapAsync(CancellationToken cancellationToken);
 
     Task<MediaResponse?> PublicMediaAsync(Guid id, CancellationToken cancellationToken);
 

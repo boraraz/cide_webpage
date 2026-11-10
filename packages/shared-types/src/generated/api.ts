@@ -466,6 +466,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/products/filters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListPublicProductFilters"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/products/{slug}/related": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListRelatedProducts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/products/{slug}": {
         parameters: {
             query?: never;
@@ -490,6 +522,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["GetPublicMedia"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sitemap.xml": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetSitemap"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1115,6 +1163,10 @@ export interface components {
         EmailOnlyRequest: {
             email: null | string;
         };
+        FilterChoice: {
+            value: string;
+            label: string;
+        };
         HealthResponse: {
             status: string;
             service: string;
@@ -1414,6 +1466,13 @@ export interface components {
             type: string;
             config: components["schemas"]["JsonElement"];
         };
+        PublicCatalogFilters: {
+            colors: components["schemas"]["FilterChoice"][];
+            sizes: components["schemas"]["FilterChoice"][];
+            minPrice: null | string;
+            maxPrice: null | string;
+            priceBasis: string;
+        };
         PublicHomepageResponse: {
             /** Format: date-time */
             publishedAt: null | string;
@@ -1432,6 +1491,15 @@ export interface components {
             available: boolean;
             /** Format: uuid */
             primaryMediaId: null | string;
+            compareAtPrice: null | string;
+            colors: string[];
+            primaryAltText: null | string;
+            /** Format: int32 */
+            primaryWidth: null | number | string;
+            /** Format: int32 */
+            primaryHeight: null | number | string;
+            primaryContentType: null | string;
+            primarySources: components["schemas"]["MediaSource"][];
         };
         PublicProductDetail: {
             /** Format: uuid */
@@ -1463,6 +1531,7 @@ export interface components {
             currency: string;
             available: boolean;
             options: components["schemas"]["SelectedOptionResponse"][];
+            availability: string;
         };
         ReadinessResponse: {
             status: string;
@@ -1772,7 +1841,9 @@ export interface operations {
     };
     GetPublicContentMedia: {
         parameters: {
-            query?: never;
+            query?: {
+                w?: number | string;
+            };
             header?: never;
             path: {
                 id: string;
@@ -2372,6 +2443,7 @@ export interface operations {
                 available?: boolean;
                 q?: string;
                 sort?: string;
+                priceBasis?: string;
             };
             header?: never;
             path?: never;
@@ -2396,6 +2468,87 @@ export interface operations {
                 content: {
                     "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
                 };
+            };
+        };
+    };
+    ListPublicProductFilters: {
+        parameters: {
+            query?: {
+                category?: string;
+                collection?: string;
+                q?: string;
+                priceBasis?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicCatalogFilters"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ListRelatedProducts: {
+        parameters: {
+            query?: {
+                limit?: number | string;
+            };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicProductCard"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -2430,11 +2583,31 @@ export interface operations {
     };
     GetPublicMedia: {
         parameters: {
-            query?: never;
+            query?: {
+                w?: number | string;
+            };
             header?: never;
             path: {
                 id: string;
             };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    GetSitemap: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;

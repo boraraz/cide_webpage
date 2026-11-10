@@ -205,12 +205,44 @@ customer storefront still does not render the catalogue or the homepage.
 - Movement history derives the previous on-hand quantity. It is not stored.
 - Sample seed images have no bytes.
 - Orders, reviews, settings and the media library stay disabled.
-- The customer storefront does not render the homepage.
+- The customer storefront does not render the homepage in Phase 4. Phase 5 renders the published homepage.
 
 ### Not in this phase
 
 Customer listing and product pages, cart, checkout, orders, payments, shipping, wishlist, reviews,
 promotions, analytics, a multi-page CMS, multi-language, multi-currency, Redis and Elasticsearch.
+
+## Phase 5: Customer storefront
+
+The storefront renders the published homepage and the active catalog. There is no cart.
+
+### Delivered
+
+- Shop, category, collection, search, and product routes. Filters and sort stay in the URL.
+- `priceBasis=from` is explicit. The default `minPrice` and `maxPrice` behavior is unchanged.
+- Variant selection follows the product's option axes. Unavailable combinations cannot be selected.
+- Related products prefer a shared collection, then a shared category.
+- WebP derivatives are generated on upload with SkiaSharp and advertised only when stored.
+- Page metadata is a plain object applied in the browser. `GET /api/v1/sitemap.xml` lists active URLs.
+
+### Accepted limits
+
+- Client rendering only. SSR and prerendering are a later production-readiness decision.
+- Sample seed images have no bytes, so those product images use a placeholder.
+- Existing uploads are not backfilled. A missing derivative falls back to the original on a direct `w` request and is omitted from `srcset`.
+- Public availability is in stock, limited, or out of stock. Exact quantities stay on the admin API.
+- The bag control stays disabled. Purchasing is not available.
+
+### Not in this phase
+
+Cart, checkout, orders, payments, shipping, wishlist, reviews, promotions, analytics, SSR, a
+multi-page CMS, multi-language, multi-currency, Redis and Elasticsearch.
+
+### Outstanding Phase 7 checks
+
+- Verify keyboard arrows and swipe on a product gallery that has more than one image.
+- Verify anonymous sign-in, account, and sign-out in a browser session that starts signed out.
+- Decide whether production SEO needs server rendering or prerendering. Phase 5 stays client-rendered.
 
 ## Later prerequisites
 
