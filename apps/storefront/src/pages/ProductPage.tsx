@@ -1,7 +1,7 @@
 import { isApiError, type PublicProductDetail } from '@commerce/api-client';
-import { Container } from '@commerce/ui';
-import { useQuery } from '@tanstack/react-query';
-import { useEffect, useMemo } from 'react';
+import { Button, Container } from '@commerce/ui';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { CatalogImage } from '@/features/catalog/CatalogImage';
 import { ProductCard } from '@/features/catalog/ProductCard';
@@ -13,7 +13,7 @@ import {
   type OptionGroup,
   type SellableVariant,
 } from '@/features/catalog/variants';
-import { catalog } from '@/lib/api';
+import { catalog, commerce } from '@/lib/api';
 import { env } from '@/lib/env';
 import { absoluteMediaUrl } from '@/lib/media';
 import { discountLabel, formatTry } from '@/lib/money';
@@ -56,6 +56,23 @@ function ProductDetail({ product }: { product: PublicProductDetail }) {
   const related = useQuery({
     queryKey: ['related', product.slug],
     queryFn: () => catalog.relatedProducts(product.slug),
+  });
+  const queryClient = useQueryClient();
+  const [added, setAdded] = useState(false);
+  const [addError, setAddError] = useState<string>();
+  const add = useMutation({
+    mutationFn: () => commerce.addItem(variant!.id, 1),
+    onSuccess: async () => {
+      setAdded(true);
+      setAddError(undefined);
+      await queryClient.invalidateQueries({ queryKey: ['cart'] });
+    },
+    onError: (error) => {
+      setAdded(false);
+      setAddError(
+        isApiError(error) ? (error.detail ?? error.title) : 'This item could not be added.',
+      );
+    },
   });
   const price = variant?.price ?? product.fromPrice;
   const compareAt = variant?.compareAtPrice;
@@ -174,14 +191,24 @@ function ProductDetail({ product }: { product: PublicProductDetail }) {
               <span className="mt-1 block text-xs text-muted-foreground">SKU {variant.sku}</span>
             ) : null}
           </p>
-          <p className="mt-4 text-sm text-muted-foreground">Purchasing is not available yet.</p>
-          <button
+          <Button
             type="button"
-            disabled
-            className="mt-4 inline-flex min-h-11 items-center text-sm text-muted-foreground"
+            className="mt-4"
+            disabled={!variant?.available || add.isPending}
+            loading={add.isPending}
+            onClick={() => {
+              setAdded(false);
+              add.mutate();
+            }}
           >
-            Bag (coming soon)
-          </button>
+            Add to bag
+          </Button>
+          {added ? <p className="mt-3 text-sm">Added to bag.</p> : null}
+          {addError ? (
+            <p className="mt-3 text-sm" role="alert">
+              {addError}
+            </p>
+          ) : null}
         </div>
       </div>
       {related.data && related.data.length > 0 ? (

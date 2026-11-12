@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Commerce.Api.Auth;
+using Commerce.Application.Commerce;
 using Commerce.Application.Identity;
 using Commerce.Domain.Identity;
 using Microsoft.AspNetCore.Antiforgery;
@@ -31,8 +32,8 @@ public static class AuthEndpoints
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status409Conflict);
 
-        group.MapPost("/login", (LoginRequest request, IdentityService identity, HttpContext http, IHostEnvironment environment, CancellationToken cancellationToken) =>
-                LoginAsync(request, RoleNames.Customer, identity, http, environment, cancellationToken))
+        group.MapPost("/login", (LoginRequest request, IdentityService identity, CommerceService commerce, HttpContext http, IHostEnvironment environment, CancellationToken cancellationToken) =>
+                LoginAsync(request, RoleNames.Customer, identity, commerce, http, environment, cancellationToken))
             .WithName("Login")
             .WithSummary("Signs in a customer.")
             .RequireRateLimiting(AuthRateLimits.Login)
@@ -92,6 +93,7 @@ public static class AuthEndpoints
     private static async Task<IResult> RegisterAsync(
         RegisterRequest request,
         IdentityService identity,
+        CommerceService commerce,
         HttpContext http,
         IHostEnvironment environment,
         CancellationToken cancellationToken)
@@ -104,13 +106,14 @@ public static class AuthEndpoints
             request.PasswordConfirmation,
             IdentityHttp.Client(http),
             cancellationToken);
-        return SignIn(result, http, environment);
+        return await SignIn(result, commerce, http, environment, cancellationToken);
     }
 
     internal static async Task<IResult> LoginAsync(
         LoginRequest request,
         string role,
         IdentityService identity,
+        CommerceService commerce,
         HttpContext http,
         IHostEnvironment environment,
         CancellationToken cancellationToken)
@@ -127,6 +130,11 @@ public static class AuthEndpoints
         }
 
         SessionCookies.Append(http.Response, environment, result.Value!.SessionToken, result.Value.SessionExpiresAt);
+        if (role == RoleNames.Customer)
+        {
+            await commerce.MergeAsync(CartCookies.Read(http.Request, environment), result.Value.User.Id, cancellationToken);
+        }
+
         return TypedResults.Ok(IdentityHttp.ToResponse(result.Value.User));
     }
 
@@ -208,7 +216,12 @@ public static class AuthEndpoints
         return result.Succeeded ? TypedResults.NoContent() : IdentityHttp.Problem(result.Failure!);
     }
 
-    private static IResult SignIn(IdentityResult<AuthSuccess> result, HttpContext http, IHostEnvironment environment)
+    private static async Task<IResult> SignIn(
+        IdentityResult<AuthSuccess> result,
+        CommerceService commerce,
+        HttpContext http,
+        IHostEnvironment environment,
+        CancellationToken cancellationToken)
     {
         if (!result.Succeeded)
         {
@@ -216,6 +229,7 @@ public static class AuthEndpoints
         }
 
         SessionCookies.Append(http.Response, environment, result.Value!.SessionToken, result.Value.SessionExpiresAt);
+        await commerce.MergeAsync(CartCookies.Read(http.Request, environment), result.Value.User.Id, cancellationToken);
         return TypedResults.Created("/api/v1/auth/me", IdentityHttp.ToResponse(result.Value.User));
     }
 }

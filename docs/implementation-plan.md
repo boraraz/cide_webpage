@@ -243,6 +243,38 @@ multi-page CMS, multi-language, multi-currency, Redis and Elasticsearch.
 - Verify keyboard arrows and swipe on a product gallery that has more than one image.
 - Verify anonymous sign-in, account, and sign-out in a browser session that starts signed out.
 - Decide whether production SEO needs server rendering or prerendering. Phase 5 stays client-rendered.
+- Guest order confirmation keeps the access token in memory and removes it from the address bar.
+  Refreshing that page loses the capability. Design a recovery path that does not put the raw token
+  in `localStorage`, `sessionStorage`, query strings, logs, or analytics.
+
+## Phase 6 — Commerce engine
+
+Guests and signed-in customers share one server-authoritative cart. Login and registration merge the
+guest cart into the customer cart, capping each line at the smaller of available stock and 10.
+Shipping is 149 TRY, and free from 2500 TRY. Checkout quotes and order totals are calculated by the
+server. An order stores immutable line and address snapshots. Submission is idempotent on the client
+intent fingerprint: a committed key returns the original order without the cart and without another
+reservation. A guest confirmation uses a hashed capability. The raw token is returned once, carried
+in the URL fragment, then removed from the address bar. It is not stored in the browser. Pending
+payment expires after 30 minutes and the worker releases stock once. Cancellation does the same.
+The email outbox is leased, retried, and delivered at least once. It does not roll back a committed
+order. There is no payment capture and no action that marks an order paid. The Phase 7 checks
+recorded under Phase 5 remain outstanding.
+
+### Accepted limits
+
+- Türkiye addresses only. No carrier selection and no shipping editor.
+- Carts do not reserve stock. Reservation starts when the order is committed.
+- Guest order access lasts 30 days and is independent of the 30-minute payment hold.
+- Refreshing the confirmation page after the fragment is removed requires the original link or a
+  signed-in account. The token is not written to persistent storage.
+- Email can be delivered more than once if the process stops after SMTP accepts and before the
+  outbox row is marked sent.
+
+### Not in this phase
+
+Payments, paid status, coupons, tax breakdowns, wishlist, reviews, promotions, analytics, SSR, a
+multi-page CMS, multi-language, multi-currency, Redis and Elasticsearch.
 
 ## Later prerequisites
 

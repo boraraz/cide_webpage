@@ -6,4 +6,6 @@ public enum InventoryMovementType
     ManualIncrease,
     ManualDecrease,
     Correction,
+    Reservation,
+    ReservationRelease,
 }

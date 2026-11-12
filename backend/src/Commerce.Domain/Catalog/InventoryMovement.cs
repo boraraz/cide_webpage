@@ -12,6 +12,8 @@ public sealed class InventoryMovement
 
     public int QuantityDelta { get; set; }
 
+    public int ReservedDelta { get; set; }
+
     public int OnHandAfter { get; set; }
 
     public int ReservedAfter { get; set; }

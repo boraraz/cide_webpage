@@ -16,6 +16,8 @@ internal sealed class InventoryMovementConfiguration : IEntityTypeConfiguration<
                 value => Enum.Parse<InventoryMovementType>(value, true))
             .HasMaxLength(32)
             .IsRequired();
+        builder.Property(movement => movement.QuantityDelta);
+        builder.Property(movement => movement.ReservedDelta).HasDefaultValue(0);
         builder.Property(movement => movement.Note).HasMaxLength(PublishRules.NoteMaxLength);
         builder.Property(movement => movement.IdempotencyKey).HasMaxLength(80).IsRequired();
         builder.Property(movement => movement.RequestHash).HasMaxLength(64).IsRequired();

@@ -30,6 +30,7 @@ builder.Services.AddFrontendCors();
 builder.Services.AddSessionAuthentication(builder.Environment);
 builder.Services.AddAuthRateLimits();
 builder.Services.AddCatalogRateLimits();
+builder.Services.AddCommerceRateLimits();
 builder.Services.Configure<FormOptions>(options =>
     options.MultipartBodyLengthLimit = 5 * 1024 * 1024 + (64 * 1024));
 
@@ -67,5 +68,6 @@ app.MapAdminAuthEndpoints();
 app.MapPublicCatalogEndpoints();
 app.MapAdminCatalogEndpoints();
 app.MapContentEndpoints();
+app.MapCommerceEndpoints();
 
 app.Run();

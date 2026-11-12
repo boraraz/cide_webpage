@@ -82,6 +82,7 @@ describe('admin shell', () => {
       'Stock',
       'Movements',
       'Homepage',
+      'Orders',
     ]);
   });
 

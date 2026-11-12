@@ -5,7 +5,9 @@ using Commerce.Application.Identity;
 using Commerce.Domain.Identity;
 using Commerce.Application.Catalog;
 using Commerce.Application.Content;
+using Commerce.Application.Commerce;
 using Commerce.Infrastructure.Catalog;
+using Commerce.Infrastructure.Ordering;
 using Commerce.Infrastructure.Content;
 using Commerce.Infrastructure.Identity;
 using Commerce.Infrastructure.Persistence;
@@ -74,6 +76,11 @@ public static class DependencyInjection
         services.AddOptions<CatalogOptions>()
             .BindConfiguration(CatalogOptions.SectionName)
             .ValidateOnStart();
+        services.AddOptions<CommerceOptions>().BindConfiguration(CommerceOptions.SectionName);
+        services.AddScoped<CommerceStore>();
+        services.AddScoped<ICommerceStore>(provider => provider.GetRequiredService<CommerceStore>());
+        services.AddScoped<ICommerceMaintenance>(provider => provider.GetRequiredService<CommerceStore>());
+        services.AddHostedService<CommerceMaintenanceService>();
 
         services.AddOptions<SmtpOptions>().BindConfiguration(SmtpOptions.SectionName);
         services.AddOptions<PublicUrlOptions>()

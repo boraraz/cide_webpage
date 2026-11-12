@@ -48,6 +48,10 @@ Then:
 3. Run `curl http://localhost:5080/api/v1/health/ready`. It should return `"status":"Healthy"`.
 4. Publish the homepage in the admin, then reload <http://localhost:5173>. Shop is
    <http://localhost:5173/shop>. Listings send `priceBasis=from`. The storefront is client-rendered.
+5. Bag is <http://localhost:5173/cart> and checkout is <http://localhost:5173/checkout>. A placed
+   order opens <http://localhost:5173/order/confirmation> and says the reservation lasts 30 minutes.
+   Signed-in history is <http://localhost:5173/account/orders>. Admin orders are
+   <http://localhost:5174/orders>. Shipping is 149 TRY and free from 2500 TRY.
 
 ## Local URLs and ports
 
@@ -197,8 +201,8 @@ the generated file.
 
 ### EF Core migrations
 
-`npm run api:migrate` applies pending migrations to the local database, including the catalog and
-`AdminContent` migrations. The API never migrates on startup. Do not drop the Postgres volume. If
+`npm run api:migrate` applies pending migrations to the local database, including `Catalog`,
+`AdminContent`, and `Commerce` (`20261112221658_Commerce`). The API never migrates on startup. Do not drop the Postgres volume. If
 migrations are pending, the role and catalog
 seeders log a warning and skip. Do not drop the Postgres volume to upgrade.
 

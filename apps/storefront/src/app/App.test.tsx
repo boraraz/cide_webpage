@@ -48,7 +48,7 @@ describe('storefront shell', () => {
     const banner = screen.getByRole('banner');
     expect(banner).toHaveTextContent(/sportswear/i);
     expect(within(banner).getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/login');
-    expect(within(banner).getByRole('button', { name: 'Bag (coming soon)' })).toBeDisabled();
+    expect(within(banner).getByRole('link', { name: 'Bag' })).toHaveAttribute('href', '/cart');
     expect(screen.getByRole('contentinfo')).toBeInTheDocument();
   });
 

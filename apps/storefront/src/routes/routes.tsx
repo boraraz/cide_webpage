@@ -16,6 +16,11 @@ const ForgotPasswordPage = lazy(() => import('@/pages/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('@/pages/ResetPasswordPage'));
 const VerifyEmailPage = lazy(() => import('@/pages/VerifyEmailPage'));
 const AccountPage = lazy(() => import('@/pages/AccountPage'));
+const CartPage = lazy(() => import('@/pages/CartPage'));
+const CheckoutPage = lazy(() => import('@/pages/CheckoutPage'));
+const OrderConfirmationPage = lazy(() => import('@/pages/OrderConfirmationPage'));
+const OrdersPage = lazy(() => import('@/pages/OrdersPage'));
+const OrderDetailPage = lazy(() => import('@/pages/OrderDetailPage'));
 
 /*
  * Future routes (product listing, product detail, cart, checkout) are added
@@ -39,6 +44,11 @@ export const routes: RouteObject[] = [
       { path: 'reset-password', element: <ResetPasswordPage /> },
       { path: 'verify-email', element: <VerifyEmailPage /> },
       { path: 'account', element: <AccountPage /> },
+      { path: 'account/orders', element: <OrdersPage /> },
+      { path: 'account/orders/:reference', element: <OrderDetailPage /> },
+      { path: 'cart', element: <CartPage /> },
+      { path: 'checkout', element: <CheckoutPage /> },
+      { path: 'order/confirmation', element: <OrderConfirmationPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },

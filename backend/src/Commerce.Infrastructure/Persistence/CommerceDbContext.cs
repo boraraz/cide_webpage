@@ -1,4 +1,5 @@
 using Commerce.Domain.Catalog;
+using Commerce.Domain.Commerce;
 using Commerce.Domain.Content;
 using Commerce.Domain.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -58,6 +59,24 @@ public sealed class CommerceDbContext(DbContextOptions<CommerceDbContext> option
     public DbSet<ContentMedia> ContentMedia => Set<ContentMedia>();
 
     public DbSet<ContentRevisionMedia> ContentRevisionMedia => Set<ContentRevisionMedia>();
+
+    public DbSet<Cart> Carts => Set<Cart>();
+
+    public DbSet<CartItem> CartItems => Set<CartItem>();
+
+    public DbSet<CustomerOrder> Orders => Set<CustomerOrder>();
+
+    public DbSet<CustomerOrderItem> OrderItems => Set<CustomerOrderItem>();
+
+    public DbSet<CustomerOrderAddress> OrderAddresses => Set<CustomerOrderAddress>();
+
+    public DbSet<OrderStatusChange> OrderStatusHistory => Set<OrderStatusChange>();
+
+    public DbSet<OrderSubmission> OrderSubmissions => Set<OrderSubmission>();
+
+    public DbSet<OrderAccessToken> OrderAccessTokens => Set<OrderAccessToken>();
+
+    public DbSet<EmailOutbox> EmailOutbox => Set<EmailOutbox>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

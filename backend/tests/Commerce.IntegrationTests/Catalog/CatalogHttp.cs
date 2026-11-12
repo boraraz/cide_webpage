@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Commerce.IntegrationTests.Identity;
+using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Commerce.IntegrationTests.Catalog;
 
@@ -16,7 +17,7 @@ internal static class CatalogHttp
         0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
     ];
 
-    public static async Task<HttpClient> AdminClientAsync(CatalogApiFactory factory)
+    public static async Task<HttpClient> AdminClientAsync(WebApplicationFactory<Program> factory)
     {
         var client = factory.CreateClient();
         await AuthHttp.PrepareAsync(client);

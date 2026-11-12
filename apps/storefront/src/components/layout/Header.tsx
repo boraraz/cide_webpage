@@ -5,7 +5,7 @@ import { Menu, Search, ShoppingBag, User } from 'lucide-react';
 import { useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router';
 import { useSession } from '@/features/auth/useSession';
-import { catalog } from '@/lib/api';
+import { catalog, commerce } from '@/lib/api';
 
 const iconButton = 'inline-flex size-11 items-center justify-center';
 
@@ -15,6 +15,8 @@ export function Header() {
   const session = useSession();
   const signedIn = Boolean(session.data);
   const categories = useQuery({ queryKey: ['categories'], queryFn: () => catalog.categories() });
+  const cart = useQuery({ queryKey: ['cart'], queryFn: () => commerce.cart() });
+  const bagCount = cart.data?.itemCount ?? 0;
   const navigate = useNavigate();
   const top = Array.isArray(categories.data) ? categories.data : [];
 
@@ -83,15 +85,14 @@ export function Header() {
             </Link>
           </li>
           <li>
-            <button
-              type="button"
-              disabled
-              title="Bag (coming soon)"
-              className={cx(iconButton, 'text-muted-foreground disabled:cursor-not-allowed')}
+            <Link
+              to="/cart"
+              className={iconButton}
+              aria-label={bagCount > 0 ? `Bag, ${bagCount} items` : 'Bag'}
             >
               <ShoppingBag aria-hidden="true" className="size-5" strokeWidth={1.5} />
-              <span className="sr-only">Bag (coming soon)</span>
-            </button>
+              {bagCount > 0 ? <span className="ml-1 text-xs">{bagCount}</span> : null}
+            </Link>
           </li>
         </ul>
       </Container>

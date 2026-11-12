@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Button, TextField } from '@commerce/ui';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Navigate, useNavigate } from 'react-router';
+import { Link, Navigate, useNavigate } from 'react-router';
 import type { z } from 'zod';
 import { PageLoading } from '@/components/PageLoading';
 import { AuthPanel } from '@/features/auth/AuthPanel';
@@ -46,6 +46,11 @@ function AccountForm({ user }: { user: NonNullable<ReturnType<typeof useSession>
 
   return (
     <AuthPanel title="Account" description={user.email}>
+      <p className="mb-6">
+        <Link to="/account/orders" className="underline">
+          Orders
+        </Link>
+      </p>
       {user.emailVerified ? (
         <p className="mb-6 text-sm text-muted-foreground">Email verified.</p>
       ) : (

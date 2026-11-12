@@ -1,4 +1,5 @@
 using Commerce.Application.Catalog;
+using Commerce.Application.Commerce;
 using Commerce.Application.Identity;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -15,6 +16,7 @@ public static class DependencyInjection
         services.AddScoped<ProductService>();
         services.AddScoped<InventoryService>();
         services.AddScoped<MediaService>();
+        services.AddScoped<CommerceService>();
         return services;
     }
 }

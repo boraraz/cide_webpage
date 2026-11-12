@@ -27,7 +27,7 @@ export const navigation: readonly NavigationItem[] = [
   { label: 'Stock', icon: Boxes, status: 'available', to: '/inventory' },
   { label: 'Movements', icon: History, status: 'available', to: '/inventory/movements' },
   { label: 'Homepage', icon: Palette, status: 'available', to: '/content/homepage' },
-  { label: 'Orders', icon: ReceiptText, status: 'planned' },
+  { label: 'Orders', icon: ReceiptText, status: 'available', to: '/orders' },
   { label: 'Customers', icon: Users, status: 'planned' },
   { label: 'Reviews', icon: MessageSquareText, status: 'planned' },
   { label: 'Media Library', icon: Images, status: 'planned' },

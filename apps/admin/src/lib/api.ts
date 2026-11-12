@@ -2,6 +2,7 @@ import {
   createApiClient,
   createAuthApi,
   createCatalogApi,
+  createCommerceApi,
   createContentApi,
   createCsrfMemory,
 } from '@commerce/api-client';
@@ -16,4 +17,5 @@ export const api = createApiClient({
 
 export const auth = createAuthApi(api, csrf);
 export const catalog = createCatalogApi(api, csrf);
+export const commerce = createCommerceApi(api, csrf);
 export const content = createContentApi(api, csrf);

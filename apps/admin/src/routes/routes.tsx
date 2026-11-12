@@ -15,6 +15,8 @@ const InventoryPage = lazy(() => import('@/pages/InventoryPage'));
 const MovementsPage = lazy(() => import('@/pages/MovementsPage'));
 const HomepagePage = lazy(() => import('@/pages/HomepagePage'));
 const HomepagePreviewPage = lazy(() => import('@/pages/HomepagePreviewPage'));
+const OrdersPage = lazy(() => import('@/pages/OrdersPage'));
+const OrderDetailPage = lazy(() => import('@/pages/OrderDetailPage'));
 
 /* Module routes are added here, and to `navigation.ts`, as each admin module is implemented. */
 export const routes: RouteObject[] = [
@@ -36,6 +38,8 @@ export const routes: RouteObject[] = [
           { path: 'inventory/movements', element: <MovementsPage /> },
           { path: 'content/homepage', element: <HomepagePage /> },
           { path: 'content/homepage/preview', element: <HomepagePreviewPage /> },
+          { path: 'orders', element: <OrdersPage /> },
+          { path: 'orders/:orderId', element: <OrderDetailPage /> },
           { path: '*', element: <NotFoundPage /> },
         ],
       },

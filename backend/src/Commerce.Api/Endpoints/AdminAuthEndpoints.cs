@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Commerce.Api.Auth;
+using Commerce.Application.Commerce;
 using Commerce.Application.Identity;
 using Commerce.Domain.Identity;
 using Microsoft.AspNetCore.RateLimiting;
@@ -12,8 +13,8 @@ public static class AdminAuthEndpoints
     {
         var group = app.MapGroup("/api/v1/admin/auth").WithTags("Admin authentication");
 
-        group.MapPost("/login", (LoginRequest request, IdentityService identity, HttpContext http, IHostEnvironment environment, CancellationToken cancellationToken) =>
-                AuthEndpoints.LoginAsync(request, RoleNames.Admin, identity, http, environment, cancellationToken))
+        group.MapPost("/login", (LoginRequest request, IdentityService identity, CommerceService commerce, HttpContext http, IHostEnvironment environment, CancellationToken cancellationToken) =>
+                AuthEndpoints.LoginAsync(request, RoleNames.Admin, identity, commerce, http, environment, cancellationToken))
             .WithName("AdminLogin")
             .WithSummary("Signs in an administrator. Customer accounts receive the same response as a wrong password.")
             .RequireRateLimiting(AuthRateLimits.Login)

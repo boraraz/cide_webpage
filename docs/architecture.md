@@ -172,7 +172,7 @@ sequenceDiagram
 - **Environment.**
   - Each app validates `import.meta.env` with Zod at startup.
   - Only public `VITE_` values exist, and today that is just `VITE_API_BASE_URL`.
-- **State.** Zustand will be added for client-only state such as the cart when that phase begins.
+- **State.** The bag is server state loaded with TanStack Query. There is no client cart store.
 - **Forms.** React Hook Form with the Zod resolver. Identity forms are one column and `max-w-md`.
 
 ## Design system and responsive strategy
@@ -225,7 +225,9 @@ sequenceDiagram
   API's configuration and user secrets. No design-time factory is needed.
 - Identity tables: `users`, `roles`, `user_roles`, `auth_sessions`, `email_verification_tokens`,
   `password_reset_tokens`, `security_events`. Passwords use ASP.NET Core's `PasswordHasher<User>`.
-  The schema is not the `AspNet*` Identity tables. There is no orders table.
+  The schema is not the `AspNet*` Identity tables. Orders live in the additive `Commerce`
+  migration: `carts`, `cart_items`, `orders`, `order_items`, `order_addresses`,
+  `order_status_history`, `order_submissions`, `order_access_tokens`, and `email_outbox`.
 - Catalog tables live in the `Catalog` migration and do not alter identity tables. Prices are
   `numeric(12,2)` on variants only. A stored `tsvector` uses the PostgreSQL `turkish` configuration.
   A trigger rejects category parent cycles.
@@ -242,12 +244,16 @@ An active variant price must be greater than zero. `compare_at_price` is null or
 than `price`. `currency_code` is constrained to `TRY`. The public list price is the minimum active
 variant price.
 
-`inventory_balances` stores `on_hand` and `reserved`. Available quantity is computed. Phase 3 writes
-`on_hand` only and leaves `reserved` at 0. Adjustments lock the balance with `SELECT … FOR UPDATE`
-inside one transaction. `Idempotency-Key` is required. The same key and body returns the original
-movement. The same key with a different body returns 409. Phase 6 will add an
-`inventory_reservations` row and increment `reserved` under the same lock, with a worker releasing
-rows older than 30 minutes. That reservation API is not built.
+`inventory_balances` stores `on_hand` and `reserved`. Available quantity is `on_hand - reserved`.
+There is no second reservation ledger. Manual adjustments lock one balance with
+`SELECT … FOR UPDATE`. Checkout locks the requested balances in variant-id order, increases
+`reserved`, and writes a `Reservation` movement (`quantity_delta` 0, `reserved_delta` positive).
+Cancellation and expiration each write one `ReservationRelease` and decrease `reserved` once.
+The initial order status is `paymentpending`. Nothing in Phase 6 sets `paid`. A future payment
+webhook may set `paid` only while the order is still `paymentpending` and `expires_at` is in the
+future. After expiration, a late payment must not restore the order. The maintenance worker expires
+due orders and sends the email outbox outside the order transaction. Delivery is at-least-once.
+SMTP acceptance is not exactly-once.
 
 Slugs are unique per entity type. Turkish characters fold to ASCII. Changing a slug stores the
 previous value in `slug_histories`. A public GET by an old slug returns the current entity. The
