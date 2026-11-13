@@ -33,6 +33,7 @@ public sealed partial class CommerceMaintenanceService(
         }
         catch (Exception exception)
         {
+            CommerceMetrics.MaintenanceException();
             LogMaintenanceFailed(logger, exception);
         }
     }

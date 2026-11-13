@@ -1077,6 +1077,66 @@ namespace Commerce.Infrastructure.Persistence.Migrations
                     b.ToTable("order_access_tokens", (string)null);
                 });
 
+            modelBuilder.Entity("Commerce.Domain.Commerce.OrderConfirmationSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<byte[]>("GuestCartHash")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("bytea")
+                        .HasColumnName("guest_cart_hash");
+
+                    b.Property<byte[]>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("bytea")
+                        .HasColumnName("token_hash");
+
+                    b.HasKey("Id")
+                        .HasName("pk_order_confirmation_sessions");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_order_confirmation_sessions_token_hash");
+
+                    b.ToTable("order_confirmation_sessions", (string)null);
+                });
+
+            modelBuilder.Entity("Commerce.Domain.Commerce.OrderConfirmationSessionOrder", b =>
+                {
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("session_id");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("order_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.HasKey("SessionId", "OrderId")
+                        .HasName("pk_order_confirmation_session_orders");
+
+                    b.HasIndex("OrderId")
+                        .HasDatabaseName("ix_order_confirmation_session_orders_order_id");
+
+                    b.ToTable("order_confirmation_session_orders", (string)null);
+                });
+
             modelBuilder.Entity("Commerce.Domain.Commerce.OrderStatusChange", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1852,6 +1912,25 @@ namespace Commerce.Infrastructure.Persistence.Migrations
                     b.Navigation("Order");
                 });
 
+            modelBuilder.Entity("Commerce.Domain.Commerce.OrderConfirmationSessionOrder", b =>
+                {
+                    b.HasOne("Commerce.Domain.Commerce.CustomerOrder", null)
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_order_confirmation_session_orders_orders_order_id");
+
+                    b.HasOne("Commerce.Domain.Commerce.OrderConfirmationSession", "Session")
+                        .WithMany("Orders")
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_order_confirmation_session_orders_order_confirmation_sessio");
+
+                    b.Navigation("Session");
+                });
+
             modelBuilder.Entity("Commerce.Domain.Commerce.OrderStatusChange", b =>
                 {
                     b.HasOne("Commerce.Domain.Commerce.CustomerOrder", "Order")
@@ -2036,6 +2115,11 @@ namespace Commerce.Infrastructure.Persistence.Migrations
                     b.Navigation("History");
 
                     b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("Commerce.Domain.Commerce.OrderConfirmationSession", b =>
+                {
+                    b.Navigation("Orders");
                 });
 
             modelBuilder.Entity("Commerce.Domain.Content.ContentRevision", b =>

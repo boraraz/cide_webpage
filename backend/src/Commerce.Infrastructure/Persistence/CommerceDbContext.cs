@@ -76,6 +76,10 @@ public sealed class CommerceDbContext(DbContextOptions<CommerceDbContext> option
 
     public DbSet<OrderAccessToken> OrderAccessTokens => Set<OrderAccessToken>();
 
+    public DbSet<OrderConfirmationSession> OrderConfirmationSessions => Set<OrderConfirmationSession>();
+
+    public DbSet<OrderConfirmationSessionOrder> OrderConfirmationSessionOrders => Set<OrderConfirmationSessionOrder>();
+
     public DbSet<EmailOutbox> EmailOutbox => Set<EmailOutbox>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

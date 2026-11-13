@@ -77,6 +77,7 @@ public static class DependencyInjection
             .BindConfiguration(CatalogOptions.SectionName)
             .ValidateOnStart();
         services.AddOptions<CommerceOptions>().BindConfiguration(CommerceOptions.SectionName);
+        services.AddHostedService<ProductionSettingsCheck>();
         services.AddScoped<CommerceStore>();
         services.AddScoped<ICommerceStore>(provider => provider.GetRequiredService<CommerceStore>());
         services.AddScoped<ICommerceMaintenance>(provider => provider.GetRequiredService<CommerceStore>());

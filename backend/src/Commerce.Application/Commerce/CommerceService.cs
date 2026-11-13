@@ -51,6 +51,7 @@ public sealed class CommerceService(ICommerceStore store)
         bool billingSameAsShipping,
         PostalAddress? billing,
         string? expectedGrandTotal,
+        string? confirmationCookie,
         CancellationToken cancellationToken)
     {
         if (!CatalogSupport.IdempotencyKeyIsValid(idempotencyKey))
@@ -118,7 +119,8 @@ public sealed class CommerceService(ICommerceStore store)
             lines,
             shippingAddress,
             billingAddress,
-            expected);
+            expected,
+            confirmationCookie);
         return store.SubmitAsync(customerId, guestHash, command, cancellationToken);
     }
 
@@ -132,6 +134,9 @@ public sealed class CommerceService(ICommerceStore store)
         string.IsNullOrWhiteSpace(rawToken)
             ? Task.FromResult<OrderModel?>(null)
             : store.FindByAccessTokenAsync(rawToken, cancellationToken);
+
+    public Task<ConfirmationPageModel?> FindByConfirmationAsync(string? rawCookie, CancellationToken cancellationToken) =>
+        store.FindByConfirmationAsync(rawCookie, cancellationToken);
 
     public Task<CommerceResult<AdminOrderPageModel>> ListAdminAsync(
         string? status, string? reference, int page, int pageSize, CancellationToken cancellationToken) =>

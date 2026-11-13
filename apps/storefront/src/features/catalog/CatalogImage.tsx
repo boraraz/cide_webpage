@@ -9,21 +9,23 @@ export function CatalogImage({
   priority = false,
   sizes = '(min-width: 1280px) 25vw, (min-width: 768px) 33vw, 50vw',
   className,
+  onFailure,
 }: {
   sources: ImageSource[];
   alt: string;
   priority?: boolean;
   sizes?: string;
   className?: string;
+  onFailure?: () => void;
 }) {
-  const [failed, setFailed] = useState(false);
+  const [failedSrc, setFailedSrc] = useState('');
   const picture = pictureFromSources(
     sources.map((source) => ({
       ...source,
       url: absoluteMediaUrl(source.url, env.VITE_API_BASE_URL),
     })),
   );
-  if (!picture.src || failed) {
+  if (!picture.src || failedSrc === picture.src) {
     return (
       <div
         role="img"
@@ -41,7 +43,10 @@ export function CatalogImage({
       alt={alt}
       loading={priority ? 'eager' : 'lazy'}
       className={className}
-      onError={() => setFailed(true)}
+      onError={() => {
+        setFailedSrc(picture.src);
+        onFailure?.();
+      }}
     />
   );
 }

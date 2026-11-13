@@ -1,0 +1,31 @@
+# Local and single-host edge. Set CADDY_SITE to the operator hostname when a
+# certificate is required. No hostname is invented here.
+# ADMIN_ALLOWLIST is not applied in this file. An empty allowlist is an unmet
+# deployment dependency, not an enforced network restriction.
+{$CADDY_SITE:http://localhost} {
+	handle /api/* {
+		reverse_proxy api:8080
+	}
+
+	handle /robots.txt {
+		rewrite * /api/v1/robots.txt
+		reverse_proxy api:8080
+	}
+
+	handle /sitemap.xml {
+		rewrite * /api/v1/sitemap.xml
+		reverse_proxy api:8080
+	}
+
+	# The admin bundle is built with base /admin/, so the browser requests
+	# /admin/assets and /admin/orders. Strip that prefix before the static
+	# server, which serves dist/assets and uses SPA fallback for nested routes.
+	redir /admin /admin/ 308
+	handle_path /admin/* {
+		reverse_proxy admin:4174
+	}
+
+	handle {
+		reverse_proxy storefront:4173
+	}
+}

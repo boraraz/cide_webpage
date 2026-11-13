@@ -122,14 +122,14 @@ describe('storefront commerce', () => {
     expect(await screen.findByText('Enter a valid email address.')).toBeInTheDocument();
   });
 
-  it('reads a guest confirmation token from the fragment and does not store it', async () => {
+  it('reopens a guest order from the confirmation session and does not store a token', async () => {
     window.history.replaceState(null, '', '/order/confirmation#capability-token');
     const seen: string[] = [];
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
       const url = String(input);
-      if (url.includes('/api/v1/orders/access')) {
-        seen.push(new Headers(init?.headers).get('X-Order-Access') ?? '');
-        return json(order);
+      seen.push(`${new Headers(init?.headers).get('X-Order-Access') ?? ''}|${url}`);
+      if (url.includes('/api/v1/orders/confirmation')) {
+        return json({ orders: [order], recoveryHours: 2 });
       }
       if (url.includes('/api/v1/cart')) return json(emptyCart);
       if (url.includes('/api/v1/categories')) return json([]);
@@ -140,9 +140,9 @@ describe('storefront commerce', () => {
     });
     renderAt('/order/confirmation');
     expect(await screen.findByText(/SW-TEST1234/)).toBeInTheDocument();
+    expect(screen.getByText(/2 hours/)).toBeInTheDocument();
     expect(screen.getByText('No payment has been collected.')).toBeInTheDocument();
-    expect(screen.getByText(/30 minutes/)).toBeInTheDocument();
-    expect(seen).toEqual(['capability-token']);
+    expect(seen.some((entry) => entry.includes('/api/v1/orders/access'))).toBe(false);
     expect(window.location.hash).toBe('');
     expect(window.location.search).not.toContain('capability-token');
     expect(localStorage.length).toBe(0);

@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build --outDir dist/client && vite build --ssr src/ssr/entry-server.tsx --outDir dist/server",
+    "start": "node server/index.mjs",
     "preview": "vite preview",
     "typecheck": "tsc -b",
     "test": "vitest run",

@@ -116,7 +116,12 @@ export interface Order {
 
 export interface PlacedOrder {
   order: Order;
-  accessToken: string;
+  recoveryHours: number;
+}
+
+export interface ConfirmationPage {
+  orders: Order[];
+  recoveryHours: number;
 }
 
 export interface PlaceOrderInput {
@@ -159,6 +164,7 @@ export interface CommerceApi {
   orders: () => Promise<Order[]>;
   order: (reference: string) => Promise<Order>;
   orderByAccess: (token: string) => Promise<Order>;
+  confirmation: () => Promise<ConfirmationPage>;
   adminOrders: (query?: {
     status?: string;
     reference?: string;
@@ -207,6 +213,7 @@ export function createCommerceApi(client: ApiClient, csrf: CsrfMemory): Commerce
     order: (reference) => client.get<Order>(`/api/v1/orders/${encodeURIComponent(reference)}`),
     orderByAccess: (token) =>
       client.get<Order>('/api/v1/orders/access', { headers: { [accessHeader]: token } }),
+    confirmation: () => client.get<ConfirmationPage>('/api/v1/orders/confirmation'),
     adminOrders: (query) => client.get<AdminOrderPage>('/api/v1/admin/orders', { query }),
     adminOrder: (orderId) => client.get<Order>(`/api/v1/admin/orders/${orderId}`),
     cancelOrder: (orderId, reason) =>

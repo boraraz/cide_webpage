@@ -37,6 +37,9 @@ public static class CommerceEndpoints
             .RequireRateLimiting(CommerceRateLimits.Submit)
             .AddEndpointFilter<RequireAntiforgery>();
         orders.MapGet("/", ListOrdersAsync).WithName("ListOrders").RequireAuthorization();
+        orders.MapGet("/confirmation", GetConfirmationAsync)
+            .WithName("GetOrderConfirmation")
+            .RequireRateLimiting(CommerceRateLimits.GuestLookup);
         orders.MapGet("/access", GetOrderByAccessAsync)
             .WithName("GetOrderByAccess")
             .RequireRateLimiting(CommerceRateLimits.GuestLookup)
@@ -132,8 +135,19 @@ public static class CommerceEndpoints
             request.BillingSameAsShipping,
             request.Billing is null ? null : MapAddress(request.Billing),
             request.ExpectedGrandTotal,
+            ConfirmationCookies.Read(http.Request, environment),
             cancellationToken);
-        return From(result, placed => Results.Json(placed, statusCode: StatusCodes.Status201Created));
+        return From(result, placed =>
+        {
+            if (placed.ConfirmationToken is not null && placed.ConfirmationExpires is DateTimeOffset expires)
+            {
+                ConfirmationCookies.Append(http.Response, environment, placed.ConfirmationToken, expires);
+            }
+
+            return Results.Json(
+                new { order = placed.Order, recoveryHours = placed.RecoveryHours },
+                statusCode: StatusCodes.Status201Created);
+        });
     }
 
     private static async Task<IResult> ListOrdersAsync(ClaimsPrincipal principal, CommerceService commerce, CancellationToken cancellationToken)
@@ -156,6 +170,15 @@ public static class CommerceEndpoints
 
         var order = await commerce.FindForCustomerAsync(customerId, reference, cancellationToken);
         return order is null ? Results.NotFound() : Results.Ok(order);
+    }
+
+    private static async Task<IResult> GetConfirmationAsync(
+        HttpContext http, CommerceService commerce, IHostEnvironment environment, CancellationToken cancellationToken)
+    {
+        http.Response.Headers["Referrer-Policy"] = "no-referrer";
+        http.Response.Headers.CacheControl = "private, no-store";
+        var page = await commerce.FindByConfirmationAsync(ConfirmationCookies.Read(http.Request, environment), cancellationToken);
+        return page is null ? Results.NotFound() : Results.Ok(page);
     }
 
     private static async Task<IResult> GetOrderByAccessAsync(HttpContext http, CommerceService commerce, CancellationToken cancellationToken)

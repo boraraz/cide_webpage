@@ -61,10 +61,30 @@ public sealed partial class CommerceStore
         {
             await transaction.RollbackAsync(cancellationToken);
             database.ChangeTracker.Clear();
-            return await ReplayAsync(scope, command, cancellationToken);
+            return await ReplayAsync(scope, command, customerId, guestHash, cancellationToken);
         }
 
         var cart = await FindCartAsync(customerId, guestHash, tracking: true, cancellationToken);
+        if (cart is not null)
+        {
+            await database.Database.SqlQuery<Guid>(
+                $"""
+                SELECT id AS "Value"
+                FROM carts
+                WHERE id = {cart.Id}
+                FOR UPDATE
+                """).ToListAsync(cancellationToken);
+            foreach (var item in cart.Items.ToList())
+            {
+                database.Entry(item).State = EntityState.Detached;
+            }
+
+            cart.Items.Clear();
+            var items = database.Entry(cart).Collection(item => item.Items);
+            items.IsLoaded = false;
+            await items.LoadAsync(cancellationToken);
+        }
+
         var cartLines = cart is null || cart.ExpiresAt <= now
             ? []
             : cart.Items.OrderBy(item => item.VariantId).Select(item => (item.VariantId, item.Quantity)).ToArray();
@@ -168,9 +188,22 @@ public sealed partial class CommerceStore
         database.EmailOutbox.Add(Outbox(order, OutboxMessageType.Received, now));
         submission.OrderId = order.Id;
         database.CartItems.RemoveRange(cart.Items);
+        string? confirmationToken = null;
+        DateTimeOffset? confirmationExpires = null;
+        if (guestHash is not null)
+        {
+            (confirmationToken, confirmationExpires) = await AttachConfirmationAsync(
+                guestHash, order.Id, command.ConfirmationCookie, now, cancellationToken);
+        }
+
         await database.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
-        return CommerceResult<PlacedOrderModel>.Ok(new PlacedOrderModel(MapOrder(order), rawToken));
+        CommerceMetrics.OrderPlaced();
+        return CommerceResult<PlacedOrderModel>.Ok(new PlacedOrderModel(
+            MapOrder(order),
+            confirmationToken,
+            confirmationExpires,
+            Math.Max(1, options.Value.ConfirmationSessionHours)));
     }
 
     public async Task<IReadOnlyList<OrderModel>> ListForCustomerAsync(Guid customerId, CancellationToken cancellationToken)
@@ -203,6 +236,32 @@ public sealed partial class CommerceStore
 
         var order = await OrderQuery().FirstOrDefaultAsync(item => item.Id == token.OrderId, cancellationToken);
         return order is null ? null : MapOrder(order);
+    }
+
+    public async Task<ConfirmationPageModel?> FindByConfirmationAsync(string? rawCookie, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(rawCookie))
+        {
+            return null;
+        }
+
+        var now = time.GetUtcNow();
+        var hash = SecureTokens.Hash(rawCookie);
+        var session = await database.OrderConfirmationSessions.AsNoTracking()
+            .FirstOrDefaultAsync(item => item.TokenHash == hash && item.ExpiresAt > now, cancellationToken);
+        if (session is null)
+        {
+            return null;
+        }
+
+        var ids = await database.OrderConfirmationSessionOrders.AsNoTracking()
+            .Where(link => link.SessionId == session.Id)
+            .OrderByDescending(link => link.CreatedAt)
+            .Select(link => link.OrderId)
+            .ToListAsync(cancellationToken);
+        var orders = await OrderQuery().Where(order => ids.Contains(order.Id)).ToListAsync(cancellationToken);
+        var ordered = ids.Select(id => orders.First(order => order.Id == id)).Select(MapOrder).ToArray();
+        return new ConfirmationPageModel(ordered, Math.Max(1, options.Value.ConfirmationSessionHours));
     }
 
     public async Task<CommerceResult<AdminOrderPageModel>> ListAdminAsync(
@@ -331,6 +390,8 @@ public sealed partial class CommerceStore
     private async Task<CommerceResult<PlacedOrderModel>> ReplayAsync(
         string scope,
         SubmitCommand command,
+        Guid? customerId,
+        byte[]? guestHash,
         CancellationToken cancellationToken)
     {
         var existing = await database.OrderSubmissions.AsNoTracking().FirstOrDefaultAsync(
@@ -348,9 +409,85 @@ public sealed partial class CommerceStore
                 "That idempotency key was already used for a different checkout."));
         }
 
+        await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
         var order = await OrderQuery().FirstAsync(item => item.Id == orderId, cancellationToken);
-        var token = await IssueAccessTokenAsync(order.Id, cancellationToken);
-        return CommerceResult<PlacedOrderModel>.Ok(new PlacedOrderModel(MapOrder(order), token));
+        await IssueAccessTokenAsync(order.Id, cancellationToken);
+        string? confirmationToken = null;
+        DateTimeOffset? confirmationExpires = null;
+        if (customerId is null && guestHash is not null)
+        {
+            (confirmationToken, confirmationExpires) = await AttachConfirmationAsync(
+                guestHash, order.Id, command.ConfirmationCookie, time.GetUtcNow(), cancellationToken);
+        }
+
+        await database.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return CommerceResult<PlacedOrderModel>.Ok(new PlacedOrderModel(
+            MapOrder(order),
+            confirmationToken,
+            confirmationExpires,
+            Math.Max(1, options.Value.ConfirmationSessionHours)));
+    }
+
+    private async Task<(string? Token, DateTimeOffset? Expires)> AttachConfirmationAsync(
+        byte[] guestHash,
+        Guid orderId,
+        string? presented,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        var hours = Math.Max(1, options.Value.ConfirmationSessionHours);
+        var expires = now.AddHours(hours);
+        OrderConfirmationSession? session = null;
+        if (!string.IsNullOrWhiteSpace(presented))
+        {
+            var hash = SecureTokens.Hash(presented);
+            var locked = await database.Database.SqlQuery<Guid>(
+                $"""
+                SELECT id AS "Value"
+                FROM order_confirmation_sessions
+                WHERE token_hash = {hash}
+                FOR UPDATE
+                """).ToListAsync(cancellationToken);
+            if (locked.Count == 1)
+            {
+                var candidate = await database.OrderConfirmationSessions.SingleAsync(item => item.Id == locked[0], cancellationToken);
+                if (candidate.ExpiresAt > now && candidate.GuestCartHash.AsSpan().SequenceEqual(guestHash))
+                {
+                    session = candidate;
+                }
+            }
+        }
+
+        string? issued = null;
+        if (session is null)
+        {
+            issued = SecureTokens.Create();
+            session = new OrderConfirmationSession
+            {
+                Id = Guid.CreateVersion7(),
+                TokenHash = SecureTokens.Hash(issued),
+                GuestCartHash = guestHash.ToArray(),
+                ExpiresAt = expires,
+                CreatedAt = now,
+            };
+            database.OrderConfirmationSessions.Add(session);
+        }
+
+        var linked = await database.OrderConfirmationSessionOrders.AnyAsync(
+            link => link.SessionId == session.Id && link.OrderId == orderId,
+            cancellationToken);
+        if (!linked)
+        {
+            database.OrderConfirmationSessionOrders.Add(new OrderConfirmationSessionOrder
+            {
+                SessionId = session.Id,
+                OrderId = orderId,
+                CreatedAt = now,
+            });
+        }
+
+        return (issued, issued is null ? null : expires);
     }
 
     private async Task<string> IssueAccessTokenAsync(Guid orderId, CancellationToken cancellationToken)
@@ -389,6 +526,8 @@ public sealed partial class CommerceStore
                 "release",
                 now));
         }
+
+        CommerceMetrics.ReservationReleased();
     }
 
     private static InventoryMovement Movement(
@@ -612,9 +751,11 @@ public sealed partial class CommerceStore
                 message.LockedUntil = null;
                 message.LastError = null;
                 sent++;
+                CommerceMetrics.OutboxMessageSent();
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
+                CommerceMetrics.OutboxMessageFailed();
                 message.Attempts += 1;
                 message.NextAttemptAt = time.GetUtcNow().Add(Backoff(message.Attempts));
                 message.LastError = FailureCode(exception);

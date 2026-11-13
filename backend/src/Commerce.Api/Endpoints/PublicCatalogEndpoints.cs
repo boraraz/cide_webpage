@@ -105,7 +105,6 @@ public static class PublicCatalogEndpoints
                 body.Append("<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">");
                 Append(body, origin, "/");
                 Append(body, origin, "/shop");
-                Append(body, origin, "/search");
                 foreach (var slug in sitemap.Categories)
                 {
                     Append(body, origin, $"/category/{Uri.EscapeDataString(slug)}");
@@ -125,6 +124,29 @@ public static class PublicCatalogEndpoints
                 return Results.Text(body.ToString(), "application/xml", Encoding.UTF8);
             })
             .WithName("GetSitemap");
+
+        group.MapGet("/robots.txt", (IOptions<PublicUrlOptions> urls) =>
+            {
+                var origin = urls.Value.StorefrontUrl.TrimEnd('/');
+                var body = $"""
+                    User-agent: *
+                    Allow: /
+                    Disallow: /account
+                    Disallow: /cart
+                    Disallow: /checkout
+                    Disallow: /order
+                    Disallow: /login
+                    Disallow: /register
+                    Disallow: /forgot-password
+                    Disallow: /reset-password
+                    Disallow: /verify-email
+                    Disallow: /search
+                    Sitemap: {origin}/sitemap.xml
+
+                    """;
+                return Results.Text(body, "text/plain", Encoding.UTF8);
+            })
+            .WithName("GetRobots");
 
         return app;
     }

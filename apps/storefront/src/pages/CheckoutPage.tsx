@@ -94,9 +94,9 @@ export default function CheckoutPage() {
       expectedGrandTotal: current.grandTotal,
     };
     try {
-      const placed = await commerce.placeOrder(idempotencyKey.current, input);
+      await commerce.placeOrder(idempotencyKey.current, input);
       await queryClient.invalidateQueries({ queryKey: ['cart'] });
-      navigate(`/order/confirmation#${placed.accessToken}`);
+      navigate('/order/confirmation');
     } catch (error) {
       if (isApiError(error) && error.status === 409) {
         await queryClient.invalidateQueries({ queryKey: ['quote'] });
@@ -137,9 +137,15 @@ export default function CheckoutPage() {
       <form
         className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_20rem]"
         onSubmit={(event) => {
-          void form.handleSubmit((values) => {
-            if (current) void place(values, current);
-          })(event);
+          void form.handleSubmit(
+            (values) => {
+              if (current) void place(values, current);
+            },
+            (errors) => {
+              const first = Object.keys(errors)[0];
+              if (first) form.setFocus(first as keyof CheckoutValues);
+            },
+          )(event);
         }}
         noValidate
       >

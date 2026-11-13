@@ -1,0 +1,67 @@
+# Single-host production shape. It does not publish PostgreSQL or RustFS.
+# Do not point it at the development volumes. Supply secrets through the
+# environment. An empty ADMIN_ALLOWLIST does not enforce an admin network rule.
+name: sportswear-commerce-production
+
+services:
+  caddy:
+    image: caddy:2.10
+    ports:
+      - '127.0.0.1:8088:80'
+    environment:
+      CADDY_SITE: ${CADDY_SITE:-http://localhost}
+    volumes:
+      - ./infrastructure/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      - api
+      - storefront
+      - admin
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://0.0.0.0:8080
+      AllowedHosts: ${ALLOWED_HOSTS:?Set ALLOWED_HOSTS}
+      ConnectionStrings__Database: ${CONNECTIONSTRINGS__DATABASE:?Set CONNECTIONSTRINGS__DATABASE}
+      PublicUrls__StorefrontUrl: ${PUBLIC_STOREFRONT_URL:?Set PUBLIC_STOREFRONT_URL}
+      PublicUrls__Mode: SameOrigin
+      ForwardedHeaders__KnownProxies__0: ${CADDY_PROXY_IP:?Set CADDY_PROXY_IP}
+      Cors__AllowedOrigins__0: ${PUBLIC_STOREFRONT_URL}
+      ObjectStorage__AccessKey: ${OBJECT_STORAGE_ACCESS_KEY:?Set OBJECT_STORAGE_ACCESS_KEY}
+      ObjectStorage__SecretKey: ${OBJECT_STORAGE_SECRET_KEY:?Set OBJECT_STORAGE_SECRET_KEY}
+      ObjectStorage__BucketName: ${OBJECT_STORAGE_BUCKET:?Set OBJECT_STORAGE_BUCKET}
+      ObjectStorage__ServiceUrl: ${OBJECT_STORAGE_URL:?Set OBJECT_STORAGE_URL}
+      Smtp__Host: ${SMTP_HOST:?Set SMTP_HOST}
+      Commerce__ShippingFee: ${COMMERCE_SHIPPING_FEE:-149}
+      Commerce__FreeShippingThreshold: ${COMMERCE_FREE_SHIPPING_THRESHOLD:-2500}
+      Commerce__PendingPaymentMinutes: ${COMMERCE_PENDING_MINUTES:-30}
+      Commerce__ConfirmationSessionHours: 2
+      Identity__BootstrapAdmin: 'false'
+      Catalog__SeedSampleData: 'false'
+    expose:
+      - '8080'
+
+  storefront:
+    build:
+      context: .
+      dockerfile: apps/storefront/Dockerfile
+      args:
+        VITE_API_BASE_URL: ${PUBLIC_STOREFRONT_URL:?Set PUBLIC_STOREFRONT_URL}
+    environment:
+      API_INTERNAL_URL: http://api:8080
+      STOREFRONT_ORIGIN: ${PUBLIC_STOREFRONT_URL:?Set PUBLIC_STOREFRONT_URL}
+      PORT: '4173'
+    expose:
+      - '4173'
+
+  admin:
+    build:
+      context: .
+      dockerfile: apps/admin/Dockerfile
+      args:
+        VITE_API_BASE_URL: ${PUBLIC_STOREFRONT_URL:?Set PUBLIC_STOREFRONT_URL}
+    expose:
+      - '4174'

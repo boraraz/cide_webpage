@@ -240,12 +240,7 @@ multi-page CMS, multi-language, multi-currency, Redis and Elasticsearch.
 
 ### Outstanding Phase 7 checks
 
-- Verify keyboard arrows and swipe on a product gallery that has more than one image.
-- Verify anonymous sign-in, account, and sign-out in a browser session that starts signed out.
-- Decide whether production SEO needs server rendering or prerendering. Phase 5 stays client-rendered.
-- Guest order confirmation keeps the access token in memory and removes it from the address bar.
-  Refreshing that page loses the capability. Design a recovery path that does not put the raw token
-  in `localStorage`, `sessionStorage`, query strings, logs, or analytics.
+These checks are implemented in Phase 7. The gallery has an accessible name, a polite live region, and `aria-current` on the active thumbnail. Public catalog routes render on the server. A guest confirmation is an HttpOnly cookie session that lasts 2 hours and is not a raw access token in browser storage.
 
 ## Phase 6 — Commerce engine
 
@@ -255,19 +250,19 @@ Shipping is 149 TRY, and free from 2500 TRY. Checkout quotes and order totals ar
 server. An order stores immutable line and address snapshots. Submission is idempotent on the client
 intent fingerprint: a committed key returns the original order without the cart and without another
 reservation. A guest confirmation uses a hashed capability. The raw token is returned once, carried
-in the URL fragment, then removed from the address bar. It is not stored in the browser. Pending
+in an HttpOnly confirmation cookie for 2 hours. The raw access token is not returned to the browser. Pending
 payment expires after 30 minutes and the worker releases stock once. Cancellation does the same.
 The email outbox is leased, retried, and delivered at least once. It does not roll back a committed
-order. There is no payment capture and no action that marks an order paid. The Phase 7 checks
-recorded under Phase 5 remain outstanding.
+order. There is no payment capture and no action that marks an order paid. Remaining launch
+limits are recorded in Phase 7.
 
 ### Accepted limits
 
 - Türkiye addresses only. No carrier selection and no shipping editor.
 - Carts do not reserve stock. Reservation starts when the order is committed.
-- Guest order access lasts 30 days and is independent of the 30-minute payment hold.
-- Refreshing the confirmation page after the fragment is removed requires the original link or a
-  signed-in account. The token is not written to persistent storage.
+- The hashed order-access table remains for the header contract. The browser receives a 2-hour
+  confirmation session instead. Signing in does not attach a guest order by email.
+- Refreshing the confirmation page works while that session is unexpired. After 2 hours it is gone.
 - Email can be delivered more than once if the process stops after SMTP accepts and before the
   outbox row is marked sent.
 
@@ -275,6 +270,31 @@ recorded under Phase 5 remain outstanding.
 
 Payments, paid status, coupons, tax breakdowns, wishlist, reviews, promotions, analytics, SSR, a
 multi-page CMS, multi-language, multi-currency, Redis and Elasticsearch.
+
+## Phase 7 — Hardening, SEO, accessibility, and launch readiness
+
+Public catalog pages render on the server. A guest confirmation is a 2-hour HttpOnly session. The
+repository includes production images, a single-host Caddy layout, fail-closed production settings,
+and isolated backup and restore scripts. A gallery image whose object is missing stays in the
+database and is omitted from the visible gallery after it fails to load.
+
+### Verification
+
+- `npm run verify`: API 79 passed, 2 skipped; frontend 53 passed.
+- `COMMERCE_INFRA_TESTS=1 npm run verify`: API 81 passed, 0 skipped; frontend 53 passed.
+- No failed tests. The API build has zero compiler warnings and zero errors.
+
+### Outstanding
+
+- Technical production readiness is NOT VERIFIED because production Compose was not started.
+- Payment integration readiness is FAIL by design.
+- Business/legal launch readiness is NOT VERIFIED.
+- Product-page CLS measured 0.188 in one local lab run and requires investigation.
+- INP is NOT VERIFIED.
+- The second gallery image is a derivative copy, not an independent product photograph.
+- Fresh authentication was not verified in a completely separate browser profile.
+- The production admin network allowlist is not configured.
+- npm reports an unknown devdir environment configuration warning.
 
 ## Later prerequisites
 

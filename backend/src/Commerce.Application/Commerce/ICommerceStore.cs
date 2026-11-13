@@ -16,6 +16,8 @@ public sealed class CommerceOptions
 
     public int OrderAccessDays { get; set; } = 30;
 
+    public int ConfirmationSessionHours { get; set; } = 2;
+
     public int CartWritePermitLimit { get; set; } = 120;
 
     public int QuotePermitLimit { get; set; } = 60;
@@ -64,6 +66,8 @@ public interface ICommerceStore
     Task<OrderModel?> FindForCustomerAsync(Guid customerId, string reference, CancellationToken cancellationToken);
 
     Task<OrderModel?> FindByAccessTokenAsync(string rawToken, CancellationToken cancellationToken);
+
+    Task<ConfirmationPageModel?> FindByConfirmationAsync(string? rawCookie, CancellationToken cancellationToken);
 
     Task<CommerceResult<AdminOrderPageModel>> ListAdminAsync(
         string? status,

@@ -107,22 +107,18 @@ public sealed class CommerceEndpointTests(CommerceApiFactory factory)
         var quote = await QuoteAsync(client);
         var key = CatalogHttp.Token();
         var lines = Lines(cart);
-        var first = await ReadAsync(await PlaceAsync(client, key, quote.GetProperty("grandTotal").GetString()!, lines));
-        var token = first.GetProperty("accessToken").GetString()!;
+        var firstResponse = await PlaceAsync(client, key, quote.GetProperty("grandTotal").GetString()!, lines);
+        var first = await ReadAsync(firstResponse);
+        Assert.False(first.TryGetProperty("accessToken", out _));
         var reference = first.GetProperty("order").GetProperty("reference").GetString();
         var empty = await client.GetFromJsonAsync<JsonElement>("/api/v1/cart");
         Assert.Equal(0, empty.GetProperty("itemCount").GetInt32());
         var second = await ReadAsync(await PlaceAsync(client, key, quote.GetProperty("grandTotal").GetString()!, lines));
         Assert.Equal(reference, second.GetProperty("order").GetProperty("reference").GetString());
-        Assert.NotEqual(token, second.GetProperty("accessToken").GetString());
+        Assert.False(second.TryGetProperty("accessToken", out _));
         Assert.Equal(1, await ReservedAsync(variant));
-        await AssertTokenStoredOnlyAsHashAsync(token);
-        await AssertTokenStoredOnlyAsHashAsync(second.GetProperty("accessToken").GetString()!);
-        var access = new HttpRequestMessage(HttpMethod.Get, "/api/v1/orders/access");
-        access.Headers.TryAddWithoutValidation("X-Order-Access", second.GetProperty("accessToken").GetString());
-        var viewed = await client.SendAsync(access);
-        Assert.Equal(HttpStatusCode.OK, viewed.StatusCode);
-        Assert.Equal(reference, (await viewed.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("reference").GetString());
+        var viewed = await client.GetFromJsonAsync<JsonElement>("/api/v1/orders/confirmation");
+        Assert.Equal(reference, viewed.GetProperty("orders")[0].GetProperty("reference").GetString());
     }
 
     [Fact]
@@ -250,7 +246,7 @@ public sealed class CommerceEndpointTests(CommerceApiFactory factory)
         var quote = await QuoteAsync(client);
         var placed = await ReadAsync(await PlaceAsync(client, CatalogHttp.Token(), quote.GetProperty("grandTotal").GetString()!, Lines(cart)));
         var reference = placed.GetProperty("order").GetProperty("reference").GetString()!;
-        var token = placed.GetProperty("accessToken").GetString()!;
+        Assert.False(placed.TryGetProperty("accessToken", out _));
         var stranger = factory.CreateClient();
         Assert.Equal(HttpStatusCode.NotFound, (await stranger.GetAsync($"/api/v1/orders/{reference}")).StatusCode);
         var wrong = new HttpRequestMessage(HttpMethod.Get, "/api/v1/orders/access");
@@ -261,12 +257,13 @@ public sealed class CommerceEndpointTests(CommerceApiFactory factory)
         {
             var database = scope.ServiceProvider.GetRequiredService<CommerceDbContext>();
             var stored = await database.OrderAccessTokens.SingleAsync(item => item.OrderId == placed.GetProperty("order").GetProperty("id").GetGuid());
+            stored.TokenHash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes("expired-capability"));
             stored.ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(-1);
             await database.SaveChangesAsync();
         }
 
         var expired = new HttpRequestMessage(HttpMethod.Get, "/api/v1/orders/access");
-        expired.Headers.TryAddWithoutValidation("X-Order-Access", token);
+        expired.Headers.TryAddWithoutValidation("X-Order-Access", "expired-capability");
         Assert.Equal(HttpStatusCode.NotFound, (await stranger.SendAsync(expired)).StatusCode);
     }
 
@@ -356,6 +353,157 @@ public sealed class CommerceEndpointTests(CommerceApiFactory factory)
         Assert.Equal(sentBefore + 1, factory.Email.Sent.Count);
     }
 
+    [Fact]
+    public async Task Guest_confirmation_session_survives_refresh_and_rejects_foreign_cookies()
+    {
+        var admin = await CatalogHttp.AdminClientAsync(factory);
+        var firstVariant = await CreateVariantAsync(admin, "Confirm tee", "400.00", 4);
+        var secondVariant = await CreateVariantAsync(admin, "Confirm second", "450.00", 4);
+        var client = factory.CreateClient();
+        var cart = await AddAsync(client, firstVariant, 1);
+        var quote = await QuoteAsync(client);
+        var placed = await PlaceAsync(client, CatalogHttp.Token(), quote.GetProperty("grandTotal").GetString()!, Lines(cart));
+        Assert.Equal(HttpStatusCode.Created, placed.StatusCode);
+        Assert.Contains("cide-confirm=", placed.Headers.GetValues("Set-Cookie").First(), StringComparison.Ordinal);
+        var again = await AddAsync(client, secondVariant, 1);
+        var nextQuote = await QuoteAsync(client);
+        var second = await PlaceAsync(client, CatalogHttp.Token(), nextQuote.GetProperty("grandTotal").GetString()!, Lines(again));
+        Assert.Equal(HttpStatusCode.Created, second.StatusCode);
+        Assert.False(second.Headers.Contains("Set-Cookie") && second.Headers.GetValues("Set-Cookie").Any(value => value.StartsWith("cide-confirm=", StringComparison.Ordinal)));
+        var page = await client.GetFromJsonAsync<JsonElement>("/api/v1/orders/confirmation");
+        Assert.Equal(2, page.GetProperty("orders").GetArrayLength());
+        Assert.Equal(2, page.GetProperty("recoveryHours").GetInt32());
+        var otherTab = factory.CreateClient();
+        otherTab.DefaultRequestHeaders.Add("Cookie", CookieHeader(placed, "cide-confirm"));
+        Assert.Equal(HttpStatusCode.OK, (await otherTab.GetAsync("/api/v1/orders/confirmation")).StatusCode);
+        var forged = factory.CreateClient();
+        forged.DefaultRequestHeaders.Add("Cookie", "cide-confirm=forged-token");
+        Assert.Equal(HttpStatusCode.NotFound, (await forged.GetAsync("/api/v1/orders/confirmation")).StatusCode);
+
+        var planted = factory.CreateClient();
+        planted.DefaultRequestHeaders.Add("Cookie", CookieHeader(placed, "cide-confirm"));
+        var plantedVariant = await CreateVariantAsync(admin, "Planted tee", "410.00", 2);
+        var plantedCart = await AddAsync(planted, plantedVariant, 1);
+        var plantedQuote = await QuoteAsync(planted);
+        var plantedOrder = await PlaceAsync(planted, CatalogHttp.Token(), plantedQuote.GetProperty("grandTotal").GetString()!, Lines(plantedCart));
+        Assert.Equal(HttpStatusCode.Created, plantedOrder.StatusCode);
+        var victim = await client.GetFromJsonAsync<JsonElement>("/api/v1/orders/confirmation");
+        var victimReferences = victim.GetProperty("orders").EnumerateArray().Select(order => order.GetProperty("reference").GetString()).ToArray();
+        var plantedBody = await planted.GetFromJsonAsync<JsonElement>("/api/v1/orders/confirmation");
+        var plantedReference = plantedBody.GetProperty("orders")[0].GetProperty("reference").GetString();
+        Assert.DoesNotContain(plantedReference, victimReferences);
+    }
+
+    [Fact]
+    public async Task Expired_confirmation_cookie_is_replaced()
+    {
+        var admin = await CatalogHttp.AdminClientAsync(factory);
+        var variant = await CreateVariantAsync(admin, "Expiry tee", "420.00", 3);
+        var client = factory.CreateClient();
+        var cart = await AddAsync(client, variant, 1);
+        var quote = await QuoteAsync(client);
+        var placed = await PlaceAsync(client, CatalogHttp.Token(), quote.GetProperty("grandTotal").GetString()!, Lines(cart));
+        using (var scope = factory.Services.CreateScope())
+        {
+            var database = scope.ServiceProvider.GetRequiredService<CommerceDbContext>();
+            var orderId = (await placed.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("order").GetProperty("id").GetGuid();
+            var link = await database.OrderConfirmationSessionOrders.SingleAsync(item => item.OrderId == orderId);
+            var session = await database.OrderConfirmationSessions.SingleAsync(item => item.Id == link.SessionId);
+            session.ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(-1);
+            await database.SaveChangesAsync();
+        }
+
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/v1/orders/confirmation")).StatusCode);
+        var more = await AddAsync(client, variant, 1);
+        var fresh = await QuoteAsync(client);
+        var next = await PlaceAsync(client, CatalogHttp.Token(), fresh.GetProperty("grandTotal").GetString()!, Lines(more));
+        Assert.Contains("cide-confirm=", next.Headers.GetValues("Set-Cookie").First(), StringComparison.Ordinal);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/orders/confirmation")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Different_idempotency_keys_do_not_create_two_orders()
+    {
+        var admin = await CatalogHttp.AdminClientAsync(factory);
+        var variant = await CreateVariantAsync(admin, "Two key tee", "430.00", 2);
+        var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var cart = await AddAsync(client, variant, 1);
+        var quote = await QuoteAsync(client);
+        var total = quote.GetProperty("grandTotal").GetString()!;
+        var lines = Lines(cart);
+        await AuthHttp.PrepareAsync(client);
+        var responses = await Task.WhenAll(
+            PlaceAsync(client, CatalogHttp.Token(), total, lines, prepare: false),
+            PlaceAsync(client, CatalogHttp.Token(), total, lines, prepare: false));
+        Assert.Contains(responses, response => response.StatusCode == HttpStatusCode.Created);
+        Assert.Contains(responses, response => response.StatusCode == HttpStatusCode.Conflict);
+        Assert.Equal(1, await ReservedAsync(variant));
+    }
+
+    [Fact]
+    public async Task Unpublished_or_repriced_variant_rejects_the_quote()
+    {
+        var admin = await CatalogHttp.AdminClientAsync(factory);
+        var variant = await CreateVariantAsync(admin, "Repriced tee", "440.00", 2);
+        var client = factory.CreateClient();
+        var cart = await AddAsync(client, variant, 1);
+        var quote = await QuoteAsync(client);
+        using (var scope = factory.Services.CreateScope())
+        {
+            var database = scope.ServiceProvider.GetRequiredService<CommerceDbContext>();
+            var stored = await database.ProductVariants.SingleAsync(item => item.Id == variant);
+            stored.Price = 999m;
+            await database.SaveChangesAsync();
+        }
+
+        var stale = await PlaceAsync(client, CatalogHttp.Token(), quote.GetProperty("grandTotal").GetString()!, Lines(cart));
+        Assert.Equal(HttpStatusCode.Conflict, stale.StatusCode);
+        Assert.Equal(0, await ReservedAsync(variant));
+        using (var scope = factory.Services.CreateScope())
+        {
+            var database = scope.ServiceProvider.GetRequiredService<CommerceDbContext>();
+            var product = await database.Products.SingleAsync(item => item.Variants.Any(option => option.Id == variant));
+            product.Status = ProductStatus.Archived;
+            await database.SaveChangesAsync();
+        }
+
+        var hidden = await PlaceAsync(client, CatalogHttp.Token(), "1449.00", Lines(cart));
+        Assert.Equal(HttpStatusCode.Conflict, hidden.StatusCode);
+        Assert.Equal(0, await ReservedAsync(variant));
+    }
+
+    [Fact]
+    public async Task Place_order_without_csrf_creates_nothing()
+    {
+        var admin = await CatalogHttp.AdminClientAsync(factory);
+        var variant = await CreateVariantAsync(admin, "Csrf tee", "210.00", 1);
+        var client = factory.CreateClient();
+        var cart = await AddAsync(client, variant, 1);
+        var quote = await QuoteAsync(client);
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/orders")
+        {
+            Content = JsonContent.Create(new
+            {
+                email = "shopper@example.com",
+                phone = "+905550000001",
+                lines = Lines(cart),
+                shipping = Address(),
+                billingSameAsShipping = true,
+                expectedGrandTotal = quote.GetProperty("grandTotal").GetString(),
+            }),
+        };
+        request.Headers.TryAddWithoutValidation("Idempotency-Key", CatalogHttp.Token());
+        client.DefaultRequestHeaders.Remove("X-CSRF-TOKEN");
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.SendAsync(request)).StatusCode);
+        Assert.Equal(0, await OrdersForVariantAsync(variant));
+    }
+
+    private static string CookieHeader(HttpResponseMessage response, string name)
+    {
+        var value = response.Headers.GetValues("Set-Cookie").First(cookie => cookie.StartsWith(name + "=", StringComparison.Ordinal));
+        return value.Split(';', 2)[0];
+    }
+
     private static async Task<JsonElement> AddAsync(HttpClient client, Guid variantId, int quantity)
     {
         var response = await CatalogHttp.PostAsync(client, "/api/v1/cart/items", new { variantId, quantity });
@@ -375,9 +523,13 @@ public sealed class CommerceEndpointTests(CommerceApiFactory factory)
         string key,
         string expectedGrandTotal,
         IReadOnlyList<object> lines,
-        string phone = "+905550000001")
+        string phone = "+905550000001",
+        bool prepare = true)
     {
-        await AuthHttp.PrepareAsync(client);
+        if (prepare)
+        {
+            await AuthHttp.PrepareAsync(client);
+        }
         var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/orders")
         {
             Content = JsonContent.Create(new

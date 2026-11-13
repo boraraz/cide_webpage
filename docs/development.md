@@ -47,9 +47,11 @@ Then:
    session is refused with **Access denied**. An administrator reaches the dashboard.
 3. Run `curl http://localhost:5080/api/v1/health/ready`. It should return `"status":"Healthy"`.
 4. Publish the homepage in the admin, then reload <http://localhost:5173>. Shop is
-   <http://localhost:5173/shop>. Listings send `priceBasis=from`. The storefront is client-rendered.
-5. Bag is <http://localhost:5173/cart> and checkout is <http://localhost:5173/checkout>. A placed
-   order opens <http://localhost:5173/order/confirmation> and says the reservation lasts 30 minutes.
+   <http://localhost:5173/shop>. Listings send `priceBasis=from`. Development stays client-rendered.
+   The production storefront process renders public catalog HTML.
+5. Bag is <http://localhost:4173/cart> in production and <http://localhost:5173/cart> in development.
+   Checkout follows the same host. A placed guest order opens `/order/confirmation`. This browser
+   can reopen it for 2 hours. The reservation lasts 30 minutes.
    Signed-in history is <http://localhost:5173/account/orders>. Admin orders are
    <http://localhost:5174/orders>. Shipping is 149 TRY and free from 2500 TRY.
 
@@ -137,6 +139,24 @@ credentials or S3 keys in frontend environment files.
 | `docker compose exec postgres psql -U sportswear_dev -d sportswear_db` | `psql` inside the container                                         |
 
 Named volumes: `sportswear-commerce_postgres-data` and `sportswear-commerce_object-storage-data`.
+
+## Production shape
+
+`compose.production.yml` is the single-host layout: Caddy on one origin, the API, the storefront Node process, and the admin app under `/admin/`. Caddy strips `/admin` before the admin static server, so `/admin/assets` and a refresh of `/admin/orders` resolve. Both frontends are built with `VITE_API_BASE_URL` set to the public storefront origin, so browser calls stay on that origin. It does not publish PostgreSQL or RustFS. Production startup rejects localhost `AllowedHosts`, a non-https storefront URL, missing database or object-storage settings, localhost SMTP, and `Identity:BootstrapAdmin=true`. Same-origin is the preferred mode. Split hostnames are accepted only when they share one registrable domain and CORS lists the storefront origin. `CADDY_PROXY_IP` must be the proxy address that is allowed to supply `X-Forwarded-For`. Without it, forwarding stays off.
+
+`ADMIN_ALLOWLIST` is not applied by the committed Caddyfile. An empty allowlist is an unmet deployment dependency. Admin authentication still applies. Do not treat the allowlist as enforced until the operator supplies CIDRs.
+
+Guest confirmation uses the cookie `__Host-cide-confirm` outside local HTTP, HttpOnly, SameSite Lax, Path `/`, for 2 hours. The raw order-access token is not returned to the browser. Catalog HTML is `Cache-Control: private, no-store`.
+
+Request logs record method, path, status, and duration. They do not record headers, query strings, or bodies, so passwords, cookies, CSRF tokens, and street addresses stay out of the log line. Problem responses still include `traceId`.
+
+Counters on the `Commerce.Commerce` meter are `commerce.orders.placed`, `commerce.reservations.released`, `commerce.outbox.sent`, `commerce.outbox.failed`, and `commerce.maintenance.failed`. An operator should alert when outbox failures or maintenance failures increase, and when reservation releases jump without a matching number of cancellations or expirations. An SMTP failure leaves the order committed and the outbox row retryable. A 503 from the storefront while the API is down is expected. These counters are not wired to an external alert vendor.
+
+## Backup and restore
+
+`scripts/backup-commerce.sh` writes a PostgreSQL custom dump and a RustFS bucket copy. They are not one atomic snapshot. The recovery point is the dump start plus the mirror finish. Keep 7 daily copies off the live volumes. Mail is not included. Restored outbox rows may send again. Restored sessions stay valid until they expire.
+
+`scripts/restore-isolated.sh` restores into the Compose project `sportswear-commerce-restore` with new volumes. It does not select `postgres-data` or `object-storage-data`. Apply a new migration to an isolated copy before the development database. Do not edit old migrations.
 
 ## PostgreSQL with DBeaver
 

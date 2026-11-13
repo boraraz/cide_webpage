@@ -1,6 +1,14 @@
 @import 'tailwindcss';
 @import '@commerce/ui/styles.css';
 
+/* Unlayered so a keyboard ring stays visible over Tailwind's control reset.
+   The attribute covers browsers that focus from a key without :focus-visible. */
+:root[data-input='keyboard'] .keyboard-focus:focus,
+.keyboard-focus:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 3px;
+}
+
 /* Storefront theme: override shared tokens here without affecting the admin. */
 @theme {
   --font-display: Georgia, 'Iowan Old Style', Palatino, 'Palatino Linotype', serif;

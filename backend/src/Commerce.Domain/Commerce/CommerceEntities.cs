@@ -191,6 +191,32 @@ public sealed class OrderAccessToken
     public DateTimeOffset CreatedAt { get; set; }
 }
 
+public sealed class OrderConfirmationSession
+{
+    public Guid Id { get; set; }
+
+    public byte[] TokenHash { get; set; } = [];
+
+    public byte[] GuestCartHash { get; set; } = [];
+
+    public DateTimeOffset ExpiresAt { get; set; }
+
+    public DateTimeOffset CreatedAt { get; set; }
+
+    public ICollection<OrderConfirmationSessionOrder> Orders { get; set; } = [];
+}
+
+public sealed class OrderConfirmationSessionOrder
+{
+    public Guid SessionId { get; set; }
+
+    public OrderConfirmationSession Session { get; set; } = null!;
+
+    public Guid OrderId { get; set; }
+
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
 public sealed class EmailOutbox
 {
     public Guid Id { get; set; }

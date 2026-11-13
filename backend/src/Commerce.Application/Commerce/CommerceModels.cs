@@ -103,7 +103,13 @@ public sealed record OrderModel(
     IReadOnlyList<OrderAddressModel> Addresses,
     IReadOnlyList<OrderHistoryModel> History);
 
-public sealed record PlacedOrderModel(OrderModel Order, string AccessToken);
+public sealed record PlacedOrderModel(
+    OrderModel Order,
+    string? ConfirmationToken,
+    DateTimeOffset? ConfirmationExpires,
+    int RecoveryHours);
+
+public sealed record ConfirmationPageModel(IReadOnlyList<OrderModel> Orders, int RecoveryHours);
 
 public sealed record SubmitCommand(
     string Fingerprint,
@@ -113,7 +119,8 @@ public sealed record SubmitCommand(
     IReadOnlyList<LineIntent> Lines,
     PostalAddress Shipping,
     PostalAddress Billing,
-    decimal ExpectedGrandTotal);
+    decimal ExpectedGrandTotal,
+    string? ConfirmationCookie);
 
 public sealed record AdminOrderRowModel(
     Guid Id,

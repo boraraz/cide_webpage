@@ -1,7 +1,7 @@
 import { isApiError, type PublicProductDetail } from '@commerce/api-client';
 import { Button, Container } from '@commerce/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { CatalogImage } from '@/features/catalog/CatalogImage';
 import { ProductCard } from '@/features/catalog/ProductCard';
@@ -231,17 +231,54 @@ function ProductDetail({ product }: { product: PublicProductDetail }) {
 
 function Gallery({ media, name }: { media: PublicProductDetail['media']; name: string }) {
   const [params, setParams] = useSearchParams();
+  const [unavailable, setUnavailable] = useState<ReadonlySet<string>>(new Set());
+  const stage = useRef<HTMLDivElement>(null);
+  const visible = media.filter((item) => !unavailable.has(item.id));
   const index = Math.min(
-    Math.max(media.length - 1, 0),
+    Math.max(visible.length - 1, 0),
     Math.max(0, Number(params.get('image') ?? '0') || 0),
   );
-  const current = media[index] ?? media[0];
+  const current = visible[index];
   function show(next: number) {
     const query = new URLSearchParams(params);
     if (next <= 0) query.delete('image');
     else query.set('image', String(next));
     setParams(query, { replace: true });
   }
+  function hide(id: string) {
+    setUnavailable((currentIds) => new Set(currentIds).add(id));
+  }
+  useEffect(() => {
+    const markKeyboard = (event: KeyboardEvent) => {
+      if (event.key === 'Tab' || event.key.startsWith('Arrow')) {
+        document.documentElement.dataset.input = 'keyboard';
+      }
+    };
+    const markPointer = () => {
+      delete document.documentElement.dataset.input;
+    };
+    window.addEventListener('keydown', markKeyboard);
+    window.addEventListener('pointerdown', markPointer);
+    return () => {
+      window.removeEventListener('keydown', markKeyboard);
+      window.removeEventListener('pointerdown', markPointer);
+    };
+  }, []);
+  useEffect(() => {
+    const element = stage.current;
+    if (!element) return;
+    const move = (event: TouchEvent) => {
+      const startX = Number(element.dataset.x ?? 0);
+      const startY = Number(element.dataset.y ?? 0);
+      const touch = event.changedTouches[0];
+      if (!touch) return;
+      const dx = touch.clientX - startX;
+      const dy = touch.clientY - startY;
+      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10) event.preventDefault();
+    };
+    element.addEventListener('touchmove', move, { passive: false });
+    return () => element.removeEventListener('touchmove', move);
+  }, [current?.id]);
   if (!current)
     return (
       <div
@@ -253,63 +290,75 @@ function Gallery({ media, name }: { media: PublicProductDetail['media']; name: s
   return (
     <div>
       <div
-        className="aspect-[3/4] overflow-hidden bg-surface"
+        ref={stage}
+        className="keyboard-focus"
         tabIndex={0}
         aria-roledescription="carousel"
+        aria-label={`${name} images`}
         onKeyDown={(event) => {
-          if (event.key === 'ArrowRight') show(Math.min(media.length - 1, index + 1));
+          if (event.key === 'ArrowRight') show(Math.min(visible.length - 1, index + 1));
           if (event.key === 'ArrowLeft') show(Math.max(0, index - 1));
         }}
         onTouchStart={(event) => {
           event.currentTarget.dataset.x = String(event.changedTouches[0]?.clientX ?? 0);
+          event.currentTarget.dataset.y = String(event.changedTouches[0]?.clientY ?? 0);
         }}
         onTouchEnd={(event) => {
           const start = Number(event.currentTarget.dataset.x ?? 0);
           const delta = (event.changedTouches[0]?.clientX ?? start) - start;
-          if (delta < -40) show(Math.min(media.length - 1, index + 1));
+          if (delta < -40) show(Math.min(visible.length - 1, index + 1));
           if (delta > 40) show(Math.max(0, index - 1));
         }}
       >
-        <CatalogImage
-          sources={current.sources}
-          alt={current.altText || name}
-          priority
-          sizes="(min-width: 1024px) 60vw, 100vw"
-          className="h-full w-full object-cover"
-        />
+        <div className="aspect-[3/4] overflow-hidden bg-surface">
+          <CatalogImage
+            sources={current.sources}
+            alt={current.altText || name}
+            priority
+            sizes="(min-width: 1024px) 60vw, 100vw"
+            className="h-full w-full object-cover"
+            onFailure={() => hide(current.id)}
+          />
+        </div>
       </div>
       <div className="mt-3 flex items-center justify-between gap-3">
         <button
           type="button"
-          className="min-h-11 px-2"
+          className="keyboard-focus min-h-11 px-2"
           onClick={() => show(Math.max(0, index - 1))}
           disabled={index === 0}
         >
           Previous
         </button>
-        <span className="text-xs text-muted-foreground">
-          {index + 1} / {media.length}
+        <span className="text-xs text-muted-foreground" aria-live="polite">
+          Image {index + 1} of {visible.length}
         </span>
         <button
           type="button"
-          className="min-h-11 px-2"
-          onClick={() => show(Math.min(media.length - 1, index + 1))}
-          disabled={index >= media.length - 1}
+          className="keyboard-focus min-h-11 px-2"
+          onClick={() => show(Math.min(visible.length - 1, index + 1))}
+          disabled={index >= visible.length - 1}
         >
           Next
         </button>
       </div>
-      <ul className="mt-3 flex gap-2 overflow-x-auto">
-        {media.map((item, itemIndex) => (
+      <ul className="mt-3 flex gap-2 overflow-x-auto p-1">
+        {visible.map((item, itemIndex) => (
           <li key={item.id}>
             <button
               type="button"
               aria-label={`Show image ${itemIndex + 1}`}
+              aria-current={itemIndex === index ? 'true' : undefined}
               aria-pressed={itemIndex === index}
-              className="size-16 border border-border aria-pressed:border-foreground"
+              className="keyboard-focus size-16 border border-border aria-pressed:border-foreground"
               onClick={() => show(itemIndex)}
             >
-              <CatalogImage sources={item.sources} alt="" className="h-full w-full object-cover" />
+              <CatalogImage
+                sources={item.sources}
+                alt=""
+                className="h-full w-full object-cover"
+                onFailure={() => hide(item.id)}
+              />
             </button>
           </li>
         ))}

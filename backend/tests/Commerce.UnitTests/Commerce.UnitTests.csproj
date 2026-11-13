@@ -5,6 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <ProjectReference Include="..\..\src\Commerce.Api\Commerce.Api.csproj" />
     <ProjectReference Include="..\..\src\Commerce.Application\Commerce.Application.csproj" />
     <ProjectReference Include="..\..\src\Commerce.Domain\Commerce.Domain.csproj" />

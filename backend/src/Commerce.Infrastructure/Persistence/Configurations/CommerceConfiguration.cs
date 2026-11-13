@@ -155,6 +155,35 @@ internal sealed class OrderAccessTokenConfiguration : IEntityTypeConfiguration<O
     }
 }
 
+internal sealed class OrderConfirmationSessionConfiguration : IEntityTypeConfiguration<OrderConfirmationSession>
+{
+    public void Configure(EntityTypeBuilder<OrderConfirmationSession> builder)
+    {
+        builder.ToTable("order_confirmation_sessions");
+        builder.HasKey(session => session.Id);
+        builder.Property(session => session.TokenHash).HasMaxLength(32).IsRequired();
+        builder.Property(session => session.GuestCartHash).HasMaxLength(32).IsRequired();
+        builder.HasIndex(session => session.TokenHash).IsUnique();
+    }
+}
+
+internal sealed class OrderConfirmationSessionOrderConfiguration : IEntityTypeConfiguration<OrderConfirmationSessionOrder>
+{
+    public void Configure(EntityTypeBuilder<OrderConfirmationSessionOrder> builder)
+    {
+        builder.ToTable("order_confirmation_session_orders");
+        builder.HasKey(link => new { link.SessionId, link.OrderId });
+        builder.HasOne(link => link.Session)
+            .WithMany(session => session.Orders)
+            .HasForeignKey(link => link.SessionId)
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<CustomerOrder>()
+            .WithMany()
+            .HasForeignKey(link => link.OrderId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
 internal sealed class EmailOutboxConfiguration : IEntityTypeConfiguration<EmailOutbox>
 {
     public void Configure(EntityTypeBuilder<EmailOutbox> builder)
